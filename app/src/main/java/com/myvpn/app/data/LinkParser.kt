@@ -193,7 +193,7 @@ object LinkParser {
 
     private fun queryParameters(uri: Uri): Map<String, String> {
         val result = mutableMapOf<String, String>()
-        val raw = uri.rawQuery ?: return result
+        val raw = uri.encodedQuery ?: return result
         raw.split('&').forEach { pair ->
             val idx = pair.indexOf('=')
             if (idx > 0) {
