@@ -17,8 +17,8 @@ android {
         versionName = "0.1.0"
 
         ndk {
-            // فقط دو ABI رایج؛ نسخه‌های ۶۴بیتی و ۳۲بیتی گوشی‌های واقعی
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            // فقط arm64: سبک‌ترین حالت ممکن؛ دستگاه‌های ۳۲بیتی پشتیبانی نمی‌شوند
+            abiFilters += listOf("arm64-v8a")
         }
     }
 

@@ -10,8 +10,9 @@ on:
 env:
   # نسخه‌ی هسته‌ی sing-box — برای ارتقا فقط همین را عوض کنید
   CORE_REF: v1.14.2
-  # تگ‌های بیلد: مجموعه‌ی رسمی منهای with_naive_outbound (وابسته به cronet با کتابخانه‌ی پیش‌ساخته‌ی ناسازگار با لینکر CI، و برای کلاینت عملاً بی‌استفاده)
-  CORE_TAGS: with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_usbip,with_openvpn,with_openconnect,badlinkname,tfogo_checklinkname0,with_tailscale,ts_omit_logtail,ts_omit_ssh,ts_omit_drive,ts_omit_taildrop,ts_omit_webclient,ts_omit_doctor,ts_omit_capture,ts_omit_kube,ts_omit_aws,ts_omit_synology,ts_omit_bird
+  # تگ‌های بیلد: سبک و کلاینت‌محور — بدون tailscale/openvpn/openconnect/usbip/naive (ده‌ها مگابایت)
+  # و بدون gvisor (استک system) — حجم هدف زیر ۱۰ مگابایت
+  CORE_TAGS: with_quic,with_utls,with_wireguard,badlinkname,tfogo_checklinkname0
   # فورک رسمی gomobile پروژه sing-box (خودش در go.mod هست؛ نیازی به go get نیست)
   GOMOBILE_VERSION: v0.1.13
 
@@ -47,7 +48,7 @@ jobs:
         run: |
           gomobile bind -v \
             -o libbox.aar \
-            -target android \
+            -target android/arm64 \
             -androidapi 24 \
             -javapkg=io.nekohasekai \
             -libname=box \

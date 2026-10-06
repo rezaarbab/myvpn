@@ -13,7 +13,9 @@ class MyVpnApplication : Application() {
         super.onCreate()
         instance = this
 
-        val baseDir = getExternalFilesDir(null) ?: filesDir
+        // حتماً حافظه داخلی: سوکت یونیکس command server روی emulated/external
+        // ساخته نمی‌شود (bind: invalid argument)
+        val baseDir = filesDir
         runCatching {
             Libbox.setup(
                 SetupOptions().apply {

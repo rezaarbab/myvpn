@@ -54,7 +54,7 @@ object ConfigBuilder {
                 put("mtu", 9000)
                 put("auto_route", true)
                 put("strict_route", true)
-                put("stack", "mixed")
+                put("stack", "system")
             })
         }
         putJsonArray("outbounds") {
@@ -202,7 +202,7 @@ object ConfigBuilder {
                         put("mtu", 9000)
                         put("auto_route", true)
                         put("strict_route", true)
-                        put("stack", "mixed")
+                        put("stack", "system")
                     })
                 }
             }
