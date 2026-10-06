@@ -17,20 +17,24 @@ env:
   GOMOBILE_VERSION: v0.1.13
 
 jobs:
-  core:
-    name: Build libbox (sing-box core)
+  build:
+    name: Build core + APK
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout app
+        uses: actions/checkout@v4
+
       - name: Checkout sing-box at CORE_REF
         uses: actions/checkout@v4
         with:
           repository: SagerNet/sing-box
           ref: ${{ env.CORE_REF }}
+          path: sing-box
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: sing-box/go.mod
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -44,10 +48,11 @@ jobs:
           go install -v github.com/sagernet/gomobile/cmd/gobind@$GOMOBILE_VERSION
           gomobile init
 
-      - name: Build AAR
+      - name: Build AAR (arm64 only)
+        working-directory: sing-box
         run: |
           gomobile bind -v \
-            -o libbox.aar \
+            -o ../app/libs/libbox.aar \
             -target android/arm64 \
             -androidapi 24 \
             -javapkg=io.nekohasekai \
@@ -57,35 +62,6 @@ jobs:
             -trimpath \
             -tags "$CORE_TAGS" \
             ./experimental/libbox
-
-      - name: Upload AAR artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: libbox-aar
-          path: libbox.aar
-
-  android:
-    name: Build APK
-    needs: core
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout app
-        uses: actions/checkout@v4
-
-      - name: Download libbox AAR
-        uses: actions/download-artifact@v4
-        with:
-          name: libbox-aar
-          path: app/libs
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
 
       - name: Prepare signing keystore
         env:
@@ -104,7 +80,6 @@ jobs:
               -alias myvpn -keyalg RSA -keysize 2048 -validity 10950 \
               -storepass myvpn-signing -keypass myvpn-signing \
               -dname "CN=MyVPN"
-            echo "SIGNING_KEYSTORE_B64=$(base64 -w0 "$RUNNER_TEMP/release.keystore")" > "$RUNNER_TEMP/keystore.b64"
           fi
           {
             echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.keystore"
@@ -121,15 +96,15 @@ jobs:
         with:
           name: app-release-apk
           path: app/build/outputs/apk/release/*.apk
+          retention-days: 14
 
       - name: Upload generated keystore (keep it for future updates)
         if: env.SIGNING_KEYSTORE_B64 == ''
         uses: actions/upload-artifact@v4
         with:
           name: signing-keystore
-          path: |
-            ${{ runner.temp }}/release.keystore
-            ${{ runner.temp }}/keystore.b64
+          path: ${{ runner.temp }}/release.keystore
+          retention-days: 14
 
       - name: Release on tag
         if: startsWith(github.ref, 'refs/tags/')
