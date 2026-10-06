@@ -88,7 +88,7 @@ object VpnManager {
         val options = CommandClientOptions()
         options.addCommand(Libbox.CommandStatus)
         options.addCommand(Libbox.CommandLog)
-        options.statusInterval = 1_000_000_000L
+        options.statusInterval = 1 * 1000 * 1000 * 1000
         val client = CommandClient(Handler(), options)
         try {
             client.connect()
