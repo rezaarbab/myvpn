@@ -1,5 +1,17 @@
 package com.myvpn.app.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +36,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,6 +63,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -153,12 +165,13 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     val busy = status == VpnManager.Status.STARTING || status == VpnManager.Status.STOPPING
     val connected = status == VpnManager.Status.STARTED
 
-    val (statusLabel, statusColor) = when (status) {
-        VpnManager.Status.STOPPED -> "قطع" to MaterialTheme.colorScheme.error
-        VpnManager.Status.STARTING -> "در حال اتصال…" to MaterialTheme.colorScheme.tertiary
-        VpnManager.Status.STARTED -> "متصل" to Color(0xFF2E7D32)
-        VpnManager.Status.STOPPING -> "در حال قطع…" to MaterialTheme.colorScheme.tertiary
+    val statusColorRaw = when (status) {
+        VpnManager.Status.STOPPED -> MaterialTheme.colorScheme.error
+        VpnManager.Status.STARTING -> MaterialTheme.colorScheme.tertiary
+        VpnManager.Status.STARTED -> Color(0xFF2E7D32)
+        VpnManager.Status.STOPPING -> MaterialTheme.colorScheme.tertiary
     }
+    val statusColor by animateColorAsState(statusColorRaw, label = "statusColor")
 
     Column(
         modifier = Modifier
@@ -182,14 +195,44 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                         .background(statusColor, CircleShape),
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(statusLabel, style = MaterialTheme.typography.labelLarge)
+                Text(statusLabel(), style = MaterialTheme.typography.labelLarge)
             }
         }
 
         Spacer(Modifier.weight(0.8f))
 
-        // دکمه‌ی اتصال
+        // دکمه‌ی اتصال با هاله و پالس
+        val pulse = rememberInfiniteTransition(label = "pulse")
+        val pulseT by pulse.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing)),
+            label = "pulseT",
+        )
+
         Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(190.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(statusColor.copy(alpha = 0.18f), Color.Transparent),
+                        ),
+                        CircleShape,
+                    ),
+            )
+            if (connected) {
+                Canvas(Modifier.size(190.dp)) {
+                    val base = size.minDimension / 2
+                    repeat(2) { i ->
+                        val t = (pulseT + i * 0.5f) % 1f
+                        drawCircle(
+                            color = statusColor.copy(alpha = (1f - t) * 0.30f),
+                            radius = base * (0.55f + 0.45f * t),
+                        )
+                    }
+                }
+            }
             if (busy) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(150.dp),
@@ -218,7 +261,7 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(18.dp))
         Text(
             if (connected) "ضربه بزنید تا قطع شود" else "ضربه بزنید تا وصل شود",
             style = MaterialTheme.typography.bodySmall,
@@ -228,17 +271,37 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
         Spacer(Modifier.weight(0.8f))
 
         // کاشی‌های آمار
-        if (connected) {
+        AnimatedVisibility(
+            visible = connected,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 StatTile("↓", formatBytes(traffic.downlink) + "/s", Modifier.weight(1f))
                 StatTile("↑", formatBytes(traffic.uplink) + "/s", Modifier.weight(1f))
-                StatTile("⇅", formatBytes(traffic.downlinkTotal + traffic.uplinkTotal), Modifier.weight(1f))
+                StatTile("Σ", formatBytes(traffic.downlinkTotal + traffic.uplinkTotal), Modifier.weight(1f))
             }
-            Spacer(Modifier.height(10.dp))
         }
+
+        AnimatedVisibility(
+            visible = error != null,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            ElevatedCard(Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                Text(
+                    error ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
 
         // کارت سرور فعال
         Card(
@@ -258,7 +321,7 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        (selected?.name?.trim()?.firstOrNull()?.uppercase() ?: "+"),
+                        selected?.name?.trim()?.firstOrNull()?.uppercase() ?: "+",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
@@ -293,19 +356,14 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                 )
             }
         }
-
-        error?.let { message ->
-            Spacer(Modifier.height(10.dp))
-            ElevatedCard(Modifier.fillMaxWidth()) {
-                Text(
-                    message,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(12.dp),
-                )
-            }
-        }
     }
+}
+
+private fun statusLabel(): String = when (VpnManager.status.value) {
+    VpnManager.Status.STOPPED -> "قطع"
+    VpnManager.Status.STARTING -> "در حال اتصال…"
+    VpnManager.Status.STARTED -> "متصل"
+    VpnManager.Status.STOPPING -> "در حال قطع…"
 }
 
 private fun formatBytes(value: Long): String {

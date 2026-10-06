@@ -6,6 +6,12 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      upx:
+        description: "فشرده‌سازی UPX روی کتابخانه (آزمایشی — احتمال کرش دارد)"
+        required: false
+        default: false
+        type: boolean
 
 env:
   # نسخه‌ی هسته‌ی sing-box — خط 1.12: هسته‌ی کلاسیک بدون daemon/gRPC (سبک) با پشتیبانی کامل پروتکل‌های مدرن
@@ -51,13 +57,13 @@ jobs:
           go install -v github.com/sagernet/gomobile/cmd/gobind@$GOMOBILE_VERSION
           gomobile init
 
-      - name: Build AAR (arm64 only)
+      - name: Build AAR (arm64 + x86_64)
         working-directory: sing-box
         run: |
           mkdir -p ../app/libs
           gomobile bind -v \
             -o ../app/libs/libbox.aar \
-            -target android/arm64 \
+            -target android \
             -androidapi 24 \
             -javapkg=io.nekohasekai \
             -libname=box \
@@ -66,6 +72,17 @@ jobs:
             -trimpath \
             -tags "$CORE_TAGS" \
             ./experimental/libbox
+
+      - name: Optional UPX pack of native library
+        if: ${{ inputs.upx == true }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq upx-ucl zip unzip
+          mkdir aar-tmp && cd aar-tmp
+          unzip -q ../app/libs/libbox.aar
+          upx --best --lzma jni/arm64-v8a/libbox.so || true
+          upx --best --lzma jni/x86_64/libbox.so || true
+          zip -q -r ../app/libs/libbox.aar .
+          cd .. && rm -rf aar-tmp
 
       - name: Prepare signing keystore
         env:

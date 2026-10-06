@@ -16,9 +16,16 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        ndk {
-            // فقط arm64: سبک‌ترین حالت ممکن؛ دستگاه‌های ۳۲بیتی پشتیبانی نمی‌شوند
-            abiFilters += listOf("arm64-v8a")
+        // Split per-ABI: هر APK فقط یک معماری را می‌برد
+        // arm64-v8a برای گوشی‌های واقعی، x86_64 برای امولاتور
+    }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = false
         }
     }
 
