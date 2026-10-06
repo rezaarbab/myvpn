@@ -165,22 +165,27 @@ fun AddServerScreen(onBack: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DropdownField(label: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val display = if (selected.isBlank()) "(بدون)" else selected
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+    Column {
         OutlinedTextField(
             value = display,
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.ArrowDropDown, contentDescription = null)
+                }
+            },
         )
-        androidx.compose.material3.ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        androidx.compose.material3.DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
             options.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(if (option.isBlank()) "(بدون)" else option) },
