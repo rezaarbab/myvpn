@@ -308,6 +308,18 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     }
 }
 
+private fun formatBytes(value: Long): String {
+    if (value < 1024) return "$value B"
+    var size = value / 1024.0
+    val units = arrayOf("KB", "MB", "GB", "TB")
+    var unit = 0
+    while (size >= 1024 && unit < units.size - 1) {
+        size /= 1024.0
+        unit++
+    }
+    return String.format(java.util.Locale.US, "%.1f %s", size, units[unit])
+}
+
 @Composable
 private fun StatTile(icon: String, value: String, modifier: Modifier = Modifier) {
     Card(modifier = modifier, shape = RoundedCornerShape(14.dp)) {
