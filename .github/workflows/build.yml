@@ -1,0 +1,136 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # نسخه‌ی هسته‌ی sing-box — برای ارتقا فقط همین را عوض کنید
+  CORE_REF: v1.14.2
+  # تگ‌های بیلد هسته: فقط قابلیت‌های سمت کلاینت؛ بدون باقی‌مانده‌های سمت سرور
+  CORE_TAGS: with_gvisor,with_quic,with_utls,with_wireguard,with_clash_api,with_ech
+
+jobs:
+  core:
+    name: Build libbox (sing-box core)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sing-box at CORE_REF
+        uses: actions/checkout@v4
+        with:
+          repository: SagerNet/sing-box
+          ref: ${{ env.CORE_REF }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          gomobile init
+
+      - name: Build AAR
+        run: |
+          gomobile bind -v \
+            -target=android \
+            -androidapi 21 \
+            -tags "$CORE_TAGS" \
+            -ldflags "-s -w -buildid=" \
+            -trimpath \
+            -o libbox.aar \
+            ./experimental/libbox
+
+      - name: Upload AAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbox-aar
+          path: libbox.aar
+
+  android:
+    name: Build APK
+    needs: core
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout app
+        uses: actions/checkout@v4
+
+      - name: Download libbox AAR
+        uses: actions/download-artifact@v4
+        with:
+          name: libbox-aar
+          path: app/libs
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare signing keystore
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          mkdir -p "$RUNNER_TEMP"
+          if [ -n "$SIGNING_KEYSTORE_B64" ]; then
+            echo "$SIGNING_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          else
+            echo "no signing secret found; generating an ephemeral keystore"
+            keytool -genkeypair -v \
+              -keystore "$RUNNER_TEMP/release.keystore" \
+              -alias myvpn -keyalg RSA -keysize 2048 -validity 10950 \
+              -storepass myvpn-signing -keypass myvpn-signing \
+              -dname "CN=MyVPN"
+            echo "SIGNING_KEYSTORE_B64=$(base64 -w0 "$RUNNER_TEMP/release.keystore")" > "$RUNNER_TEMP/keystore.b64"
+          fi
+          {
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.keystore"
+            echo "SIGNING_STORE_PASSWORD=${SIGNING_STORE_PASSWORD:-myvpn-signing}"
+            echo "SIGNING_KEY_ALIAS=${SIGNING_KEY_ALIAS:-myvpn}"
+            echo "SIGNING_KEY_PASSWORD=${SIGNING_KEY_PASSWORD:-myvpn-signing}"
+          } >> "$GITHUB_ENV"
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: app/build/outputs/apk/release/*.apk
+
+      - name: Upload generated keystore (keep it for future updates)
+        if: env.SIGNING_KEYSTORE_B64 == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: signing-keystore
+          path: |
+            ${{ runner.temp }}/release.keystore
+            ${{ runner.temp }}/keystore.b64
+
+      - name: Release on tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            app/build/outputs/apk/release/*.apk \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

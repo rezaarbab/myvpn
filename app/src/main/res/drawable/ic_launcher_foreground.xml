@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- سپر ساده -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,26 L76,34 L76,52 C76,66 66,76 54,80 C42,76 32,66 32,52 L32,34 Z" />
+    <!-- کلید/اتصال درون سپر -->
+    <path
+        android:fillColor="#0B57D0"
+        android:pathData="M54,40 C49,40 45,44 45,49 C45,53 47,56 51,57 L51,66 L57,66 L57,62 L54,62 L54,57 C58,56 63,53 63,49 C63,44 59,40 54,40 Z M54,44 C56,44 58,46 58,49 C58,52 56,54 54,54 C52,54 50,52 50,49 C50,46 52,44 54,44 Z" />
+</vector>
