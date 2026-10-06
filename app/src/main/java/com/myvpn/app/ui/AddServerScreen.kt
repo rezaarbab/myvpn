@@ -15,12 +15,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myvpn.app.VpnManager
 import com.myvpn.app.data.LinkParser
+import com.myvpn.app.data.ProfileStore
 import com.myvpn.app.data.ServerProfile
 
 private val PROTOCOL_TYPES = listOf("vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic")
@@ -178,7 +179,7 @@ private fun DropdownField(label: String, options: List<String>, selected: String
             modifier = Modifier.fillMaxWidth(),
             trailingIcon = {
                 IconButton(onClick = { expanded = !expanded }) {
-                    Icon(androidx.compose.material.icons.Icons.Filled.ArrowDropDown, contentDescription = null)
+                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
                 }
             },
         )

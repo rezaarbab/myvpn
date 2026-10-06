@@ -108,26 +108,36 @@ object VpnManager {
 
     private var commandClient: CommandClient? = null
 
-    private inner class Handler : CommandClientHandler {
+    fun onTraffic(stats: TrafficStats) {
+        _traffic.value = stats
+    }
+
+    fun onClientDisconnected() {
+        synchronized(this) {
+            runCatching { commandClient?.disconnect() }
+            commandClient = null
+        }
+    }
+
+    private class Handler : CommandClientHandler {
         override fun connected() {
-            Log.d(TAG, "command client connected")
+            Log.d("VpnManager", "command client connected")
         }
 
         override fun disconnected(message: String?) {
-            synchronized(this@VpnManager) {
-                runCatching { commandClient?.disconnect() }
-                commandClient = null
-            }
+            VpnManager.onClientDisconnected()
         }
 
         override fun writeStatus(message: StatusMessage?) {
             message ?: return
-            _traffic.value = TrafficStats(
-                uplink = message.uplink,
-                downlink = message.downlink,
-                uplinkTotal = message.uplinkTotal,
-                downlinkTotal = message.downlinkTotal,
-                connections = message.connectionsIn + message.connectionsOut,
+            VpnManager.onTraffic(
+                TrafficStats(
+                    uplink = message.uplink,
+                    downlink = message.downlink,
+                    uplinkTotal = message.uplinkTotal,
+                    downlinkTotal = message.downlinkTotal,
+                    connections = message.connectionsIn + message.connectionsOut,
+                ),
             )
         }
 
@@ -135,7 +145,7 @@ object VpnManager {
             messageList ?: return
             while (messageList.hasNext()) {
                 val entry = messageList.next() ?: continue
-                appendLog(entry.message)
+                VpnManager.appendLog(entry.message)
             }
         }
 
@@ -153,6 +163,4 @@ object VpnManager {
 
         override fun writeConnectionEvents(events: ConnectionEvents?) {}
     }
-
-    private const val TAG = "VpnManager"
 }

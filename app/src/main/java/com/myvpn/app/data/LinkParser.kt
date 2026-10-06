@@ -45,7 +45,7 @@ object LinkParser {
 
     private fun parseUriBased(link: String, type: String): ServerProfile {
         val uri = Uri.parse(link)
-        val params = uri.queryParameters
+        val params = queryParameters(uri)
         val security = params["security"] ?: "tls"
         val netType = params["type"] ?: "tcp"
         return ServerProfile(
@@ -80,7 +80,7 @@ object LinkParser {
 
     private fun parseHysteria2(link: String): ServerProfile {
         val uri = Uri.parse(link)
-        val params = uri.queryParameters
+        val params = queryParameters(uri)
         val password = uri.userInfo?.substringAfterLast(':').orEmpty()
         return ServerProfile(
             id = newId(),
@@ -98,7 +98,7 @@ object LinkParser {
 
     private fun parseTuic(link: String): ServerProfile {
         val uri = Uri.parse(link)
-        val params = uri.queryParameters
+        val params = queryParameters(uri)
         val userInfo = uri.userInfo.orEmpty()
         return ServerProfile(
             id = newId(),
@@ -191,23 +191,19 @@ object LinkParser {
         )
     }
 
-    private fun Uri.getQueryParameterSafe(key: String): String? = runCatching {
-        getQueryParameter(key)
-    }.getOrNull()
-
-    private val Uri.queryParameters: Map<String, String>
-        get() {
-            val result = mutableMapOf<String, String>()
-            rawQuery?.split('&')?.forEach { pair ->
-                val idx = pair.indexOf('=')
-                if (idx > 0) {
-                    val key = java.net.URLDecoder.decode(pair.substring(0, idx), "UTF-8")
-                    val value = java.net.URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
-                    result[key] = value
-                }
+    private fun queryParameters(uri: Uri): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        val raw = uri.rawQuery ?: return result
+        raw.split('&').forEach { pair ->
+            val idx = pair.indexOf('=')
+            if (idx > 0) {
+                val key = java.net.URLDecoder.decode(pair.substring(0, idx), "UTF-8")
+                val value = java.net.URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
+                result[key] = value
             }
-            return result
         }
+        return result
+    }
 
     private fun decodeBase64(input: String): String {
         val normalized = input.trim().replace('-', '+').replace('_', '/').replace("\n", "")
