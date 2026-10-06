@@ -10,8 +10,9 @@ on:
 env:
   # نسخه‌ی هسته‌ی sing-box — برای ارتقا فقط همین را عوض کنید
   CORE_REF: v1.14.2
-  # تگ‌های بیلد هسته: فقط قابلیت‌های سمت کلاینت؛ بدون باقی‌مانده‌های سمت سرور
-  CORE_TAGS: with_gvisor,with_quic,with_utls,with_wireguard,with_clash_api,with_ech
+  # تگ‌های بیلد هسته: فقط قابلیت‌های سمت کلاینت
+  # نکته: تگ with_ech در sing-box 1.14 حذف شده (ECH منتقل شده به stdlib گو) و استفاده ازش بیلد را می‌شکند
+  CORE_TAGS: with_gvisor,with_quic,with_utls,with_wireguard,with_clash_api
 
 jobs:
   core:
