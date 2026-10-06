@@ -244,10 +244,6 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
         notificationDelegate.showCoreNotification(notification)
     }
 
-    override fun cancelNotification(identifier: String, typeID: Int) {
-        NotificationManagerCompat.from(this).cancel(identifier, typeID)
-    }
-
     // ---- CommandServerHandler (libbox v1.12) ----
 
     override fun serviceReload() {
