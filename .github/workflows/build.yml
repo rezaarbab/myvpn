@@ -13,6 +13,9 @@ env:
   # تگ‌های بیلد هسته: فقط قابلیت‌های سمت کلاینت
   # نکته: تگ with_ech در sing-box 1.14 حذف شده (ECH منتقل شده به stdlib گو) و استفاده ازش بیلد را می‌شکند
   CORE_TAGS: with_gvisor,with_quic,with_utls,with_wireguard,with_clash_api
+  # x/mobile پین شده: نسخه‌های جدیدتر gomobile گو 1.26 می‌خواهند که شیم pidfd هسته را می‌شکند
+  # (گلینکر: invalid reference to os.checkPidfdOnce) — این نسخه با گو 1.25 سازگار است
+  CORE_MOBILE: v0.0.0-20251209145715-2553ed8ce294
 
 jobs:
   core:
@@ -38,14 +41,16 @@ jobs:
 
       - name: Install gomobile
         run: |
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
+          go install golang.org/x/mobile/cmd/gomobile@$CORE_MOBILE
+          go install golang.org/x/mobile/cmd/gobind@$CORE_MOBILE
           gomobile init
 
       - name: Build AAR
+        env:
+          GOTOOLCHAIN: local
         run: |
-          # gomobile جدید x/mobile را در گراف ماژول می‌خواهد
-          go get -tool golang.org/x/mobile/cmd/gobind@latest
+          # ثبت x/mobile در گراف ماژول (الزام gomobile های جدید)
+          go get -tool golang.org/x/mobile/cmd/gobind@$CORE_MOBILE
           gomobile bind -v \
             -target=android \
             -androidapi 21 \
