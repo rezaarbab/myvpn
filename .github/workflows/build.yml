@@ -10,12 +10,10 @@ on:
 env:
   # نسخه‌ی هسته‌ی sing-box — برای ارتقا فقط همین را عوض کنید
   CORE_REF: v1.14.2
-  # تگ‌های بیلد هسته: فقط قابلیت‌های سمت کلاینت
-  # نکته: تگ with_ech در sing-box 1.14 حذف شده (ECH منتقل شده به stdlib گو) و استفاده ازش بیلد را می‌شکند
-  CORE_TAGS: with_gvisor,with_quic,with_utls,with_wireguard,with_clash_api
-  # x/mobile پین شده: نسخه‌های جدیدتر gomobile گو 1.26 می‌خواهند که شیم pidfd هسته را می‌شکند
-  # (گلینکر: invalid reference to os.checkPidfdOnce) — این نسخه با گو 1.25 سازگار است
-  CORE_MOBILE: v0.0.0-20251209145715-2553ed8ce294
+  # تگ‌های بیلد: دقیقاً همان مجموعه‌ی رسمی sing-box (بخش ts_omit_* قابلیت‌های اضافه‌ی tailscale را حذف می‌کند)
+  CORE_TAGS: with_gvisor,with_quic,with_wireguard,with_utls,with_naive_outbound,with_clash_api,with_usbip,with_openvpn,with_openconnect,badlinkname,tfogo_checklinkname0,with_tailscale,ts_omit_logtail,ts_omit_ssh,ts_omit_drive,ts_omit_taildrop,ts_omit_webclient,ts_omit_doctor,ts_omit_capture,ts_omit_kube,ts_omit_aws,ts_omit_synology,ts_omit_bird
+  # فورک رسمی gomobile پروژه sing-box (خودش در go.mod هست؛ نیازی به go get نیست)
+  GOMOBILE_VERSION: v0.1.13
 
 jobs:
   core:
@@ -39,25 +37,24 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install gomobile
+      - name: Install gomobile (sagernet fork, same as official Makefile)
         run: |
-          go install golang.org/x/mobile/cmd/gomobile@$CORE_MOBILE
-          go install golang.org/x/mobile/cmd/gobind@$CORE_MOBILE
+          go install -v github.com/sagernet/gomobile/cmd/gomobile@$GOMOBILE_VERSION
+          go install -v github.com/sagernet/gomobile/cmd/gobind@$GOMOBILE_VERSION
           gomobile init
 
       - name: Build AAR
-        env:
-          GOTOOLCHAIN: local
         run: |
-          # ثبت x/mobile در گراف ماژول (الزام gomobile های جدید)
-          go get -tool golang.org/x/mobile/cmd/gobind@$CORE_MOBILE
           gomobile bind -v \
-            -target=android \
-            -androidapi 21 \
-            -tags "$CORE_TAGS" \
-            -ldflags "-s -w -buildid=" \
-            -trimpath \
             -o libbox.aar \
+            -target android \
+            -androidapi 24 \
+            -javapkg=io.nekohasekai \
+            -libname=box \
+            -buildvcs=false \
+            -ldflags "-X github.com/sagernet/sing-box/constant.Version=$CORE_REF -X runtime.godebugDefault=multipathtcp=0,tlssha1=1 -checklinkname=0 -s -w -buildid=" \
+            -trimpath \
+            -tags "$CORE_TAGS" \
             ./experimental/libbox
 
       - name: Upload AAR artifact
