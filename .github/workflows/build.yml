@@ -51,6 +51,7 @@ jobs:
       - name: Build AAR (arm64 only)
         working-directory: sing-box
         run: |
+          mkdir -p ../app/libs
           gomobile bind -v \
             -o ../app/libs/libbox.aar \
             -target android/arm64 \
