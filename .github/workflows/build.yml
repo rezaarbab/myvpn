@@ -10,8 +10,10 @@ on:
 env:
   # نسخه‌ی هسته‌ی sing-box — خط 1.12: هسته‌ی کلاسیک بدون daemon/gRPC (سبک) با پشتیبانی کامل پروتکل‌های مدرن
   CORE_REF: v1.12.25
-  # تگ‌های بیلد: حداقلی و کلاینت‌محور (Hysteria2/TUIC از quic، Reality از utls، WireGuard)
-  CORE_TAGS: with_quic,with_utls,with_wireguard
+  # تگ‌های بیلد: حداقلی — with_clash_api برای خودِ libbox اجباری است،
+  # with_utls برای Reality؛ quic (Hysteria2/TUIC) و wireguard حذف شدند تا حجم به کف برسد
+  # (برای برگرداندن: با_quic و with_wireguard را اضافه کن)
+  CORE_TAGS: with_clash_api,with_utls
   # فورک رسمی gomobile پروژه sing-box
   GOMOBILE_VERSION: v0.1.13
   # شیم pidfd هسته به os.checkPidfdOnce گو نیاز دارد که از 1.24+ موجود است

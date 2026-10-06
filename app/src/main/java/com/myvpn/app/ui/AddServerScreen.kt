@@ -45,7 +45,7 @@ import com.myvpn.app.data.LinkParser
 import com.myvpn.app.data.ProfileStore
 import com.myvpn.app.data.ServerProfile
 
-private val PROTOCOL_TYPES = listOf("vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic")
+private val PROTOCOL_TYPES = listOf("vless", "vmess", "trojan", "shadowsocks")
 private val TRANSPORT_TYPES = listOf("", "ws", "grpc", "http", "httpupgrade")
 
 @OptIn(ExperimentalMaterial3Api::class)

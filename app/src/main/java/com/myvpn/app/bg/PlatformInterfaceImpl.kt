@@ -200,7 +200,8 @@ object DefaultNetworkMonitor {
         val context = MyVpnApplication.instance
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         if (newListener != null && !registered) {
-            connectivity.registerDefaultNetworkCallback(callback)
+            runCatching { connectivity.registerDefaultNetworkCallback(callback) }
+                .onFailure { Log.e("NetworkMonitor", "register callback", it) }
             registered = true
         } else if (newListener == null && registered) {
             runCatching { connectivity.unregisterNetworkCallback(callback) }
