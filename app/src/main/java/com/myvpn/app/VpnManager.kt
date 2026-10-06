@@ -1,16 +1,11 @@
 package com.myvpn.app
 
 import android.util.Log
-import go.Seq
 import io.nekohasekai.libbox.CommandClient
 import io.nekohasekai.libbox.CommandClientHandler
 import io.nekohasekai.libbox.CommandClientOptions
-import io.nekohasekai.libbox.ConnectionEvents
+import io.nekohasekai.libbox.Connections
 import io.nekohasekai.libbox.Libbox
-import io.nekohasekai.libbox.LogIterator
-import io.nekohasekai.libbox.OutboundGroup
-import io.nekohasekai.libbox.OutboundGroupItem
-import io.nekohasekai.libbox.OutboundGroupItemIterator
 import io.nekohasekai.libbox.OutboundGroupIterator
 import io.nekohasekai.libbox.StatusMessage
 import io.nekohasekai.libbox.StringIterator
@@ -85,10 +80,10 @@ object VpnManager {
     @Synchronized
     private fun ensureClient() {
         if (commandClient != null) return
+        // کلاینت 1.12 در هر اتصال فقط یک کامند می‌پذیرد
         val options = CommandClientOptions()
-        options.addCommand(Libbox.CommandStatus)
-        options.addCommand(Libbox.CommandLog)
-        options.statusInterval = 1 * 1000 * 1000 * 1000
+        options.command = Libbox.CommandStatus
+        options.statusInterval = 1_000_000_000L
         val client = CommandClient(Handler(), options)
         try {
             client.connect()
@@ -141,26 +136,21 @@ object VpnManager {
             )
         }
 
-        override fun writeLogs(messageList: LogIterator?) {
+        override fun writeLogs(messageList: StringIterator?) {
             messageList ?: return
             while (messageList.hasNext()) {
-                val entry = messageList.next() ?: continue
-                VpnManager.appendLog(entry.message)
+                VpnManager.appendLog(messageList.next())
             }
         }
 
         override fun clearLogs() = VpnManager.clearLogs()
 
-        override fun setDefaultLogLevel(level: Int) {}
-
         override fun writeGroups(message: OutboundGroupIterator?) {}
-
-        override fun writeOutbounds(message: OutboundGroupItemIterator?) {}
 
         override fun initializeClashMode(modeList: StringIterator?, currentMode: String?) {}
 
         override fun updateClashMode(newMode: String?) {}
 
-        override fun writeConnectionEvents(events: ConnectionEvents?) {}
+        override fun writeConnections(message: Connections?) {}
     }
 }

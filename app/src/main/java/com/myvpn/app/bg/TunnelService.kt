@@ -23,11 +23,11 @@ import com.myvpn.app.R
 import com.myvpn.app.VpnManager
 import com.myvpn.app.data.ConfigBuilder
 import com.myvpn.app.data.ProfileStore
+import io.nekohasekai.libbox.BoxService
 import io.nekohasekai.libbox.CommandServer
 import io.nekohasekai.libbox.CommandServerHandler
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.Notification as LibboxNotification
-import io.nekohasekai.libbox.OverrideOptions
 import io.nekohasekai.libbox.SystemProxyStatus
 import io.nekohasekai.libbox.TunOptions
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +44,7 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
     private val notificationDelegate by lazy { ServiceNotificationDelegate(this) }
 
     private var commandServer: CommandServer? = null
+    private var boxService: BoxService? = null
     private var receiverRegistered = false
 
     private val receiver = object : BroadcastReceiver() {
@@ -74,7 +75,7 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
 
     private suspend fun startBox() {
         try {
-            val server = CommandServer(this, this)
+            val server = Libbox.newCommandServer(this, 300)
             server.start()
             commandServer = server
 
@@ -84,10 +85,12 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
                 return
             }
             val config = ConfigBuilder.build(profile)
-            server.startOrReloadService(
-                config,
-                OverrideOptions().apply { autoRedirect = false },
-            )
+            val service = Libbox.newService(config, this)
+            server.setService(service)
+            service.start()
+            boxService = service
+
+            VpnManager.observe()
             withContext(Dispatchers.Main) {
                 notificationDelegate.update(profile.name, "متصل")
             }
@@ -115,8 +118,12 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
             runCatching { it.close() }
         }
         fileDescriptor = null
+        boxService?.let { service ->
+            runCatching { service.close() }
+        }
+        boxService = null
         commandServer?.let { server ->
-            runCatching { server.closeService() }
+            runCatching { server.setService(null) }
             runCatching { server.close() }
         }
         commandServer = null
@@ -171,13 +178,6 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
         }
 
         if (options.autoRoute) {
-            if (options.dnsMode.value != Libbox.DNSModeDisabled) {
-                val dnsServerAddress = options.dnsServerAddress
-                while (dnsServerAddress.hasNext()) {
-                    builder.addDnsServer(dnsServerAddress.next())
-                }
-            }
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 val inet4RouteAddress = options.inet4RouteAddress
                 if (inet4RouteAddress.hasNext()) {
@@ -248,14 +248,14 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
         NotificationManagerCompat.from(this).cancel(identifier, typeID)
     }
 
-    // ---- CommandServerHandler ----
-
-    override fun serviceStop() {
-        stopService()
-    }
+    // ---- CommandServerHandler (libbox v1.12) ----
 
     override fun serviceReload() {
         // در فاز ۱ استفاده نمی‌شود
+    }
+
+    override fun postServiceClose() {
+        stopService()
     }
 
     override fun getSystemProxyStatus(): SystemProxyStatus =
@@ -265,19 +265,6 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
         }
 
     override fun setSystemProxyEnabled(enabled: Boolean) {}
-
-    override fun triggerNativeCrash() {
-        Thread {
-            Thread.sleep(200)
-            throw RuntimeException("debug native crash")
-        }.start()
-    }
-
-    override fun writeDebugMessage(message: String?) {
-        Log.d(TAG, message ?: "")
-    }
-
-    override fun connectSSHAgent(): Int = -1
 
     companion object {
         private const val TAG = "TunnelService"

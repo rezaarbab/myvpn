@@ -11,7 +11,7 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
 /**
- * ساخت کانفیگ JSON سازگار با sing-box 1.14 از پروفایل سرور.
+ * ساخت کانفیگ JSON سازگار با sing-box 1.12 از پروفایل سرور.
  */
 object ConfigBuilder {
 
@@ -67,6 +67,12 @@ object ConfigBuilder {
         putJsonObject("route") {
             put("final", "proxy")
             put("default_domain_resolver", "dns-direct")
+        }
+        // libbox v1.12 در SetService به clash_server نیاز دارد
+        putJsonObject("experimental") {
+            putJsonObject("clash_api") {
+                put("external_controller", "127.0.0.1:9090")
+            }
         }
     }
 
@@ -214,6 +220,16 @@ object ConfigBuilder {
                         put("default_domain_resolver", "dns-direct")
                     }
                 }
+            }
+            // بدون clash_api کتابخانه در SetService پنیک می‌کند
+            val experimental = obj["experimental"] as? JsonObject
+            if (experimental?.get("clash_api") == null) {
+                put("experimental", buildJsonObject {
+                    experimental?.forEach { (key, value) -> put(key, value) }
+                    putJsonObject("clash_api") {
+                        put("external_controller", "127.0.0.1:9090")
+                    }
+                })
             }
         }.toString()
     }

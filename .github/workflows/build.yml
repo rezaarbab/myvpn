@@ -8,13 +8,14 @@ on:
   workflow_dispatch:
 
 env:
-  # نسخه‌ی هسته‌ی sing-box — برای ارتقا فقط همین را عوض کنید
-  CORE_REF: v1.14.2
-  # تگ‌های بیلد: سبک و کلاینت‌محور — بدون tailscale/openvpn/openconnect/usbip/naive (ده‌ها مگابایت)
-  # و بدون gvisor (استک system) — حجم هدف زیر ۱۰ مگابایت
-  CORE_TAGS: with_quic,with_utls,with_wireguard,badlinkname,tfogo_checklinkname0
-  # فورک رسمی gomobile پروژه sing-box (خودش در go.mod هست؛ نیازی به go get نیست)
+  # نسخه‌ی هسته‌ی sing-box — خط 1.12: هسته‌ی کلاسیک بدون daemon/gRPC (سبک) با پشتیبانی کامل پروتکل‌های مدرن
+  CORE_REF: v1.12.25
+  # تگ‌های بیلد: حداقلی و کلاینت‌محور (Hysteria2/TUIC از quic، Reality از utls، WireGuard)
+  CORE_TAGS: with_quic,with_utls,with_wireguard
+  # فورک رسمی gomobile پروژه sing-box
   GOMOBILE_VERSION: v0.1.13
+  # شیم pidfd هسته به os.checkPidfdOnce گو نیاز دارد که از 1.24+ موجود است
+  GO_VERSION: "1.25.5"
 
 jobs:
   build:
@@ -34,7 +35,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: sing-box/go.mod
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Set up Java
         uses: actions/setup-java@v4

@@ -15,19 +15,13 @@ class MyVpnApplication : Application() {
 
         // حتماً حافظه داخلی: سوکت یونیکس command server روی emulated/external
         // ساخته نمی‌شود (bind: invalid argument)
-        val baseDir = filesDir
         runCatching {
             Libbox.setup(
                 SetupOptions().apply {
-                    basePath = baseDir.absolutePath
-                    workingPath = baseDir.absolutePath
+                    basePath = filesDir.absolutePath
+                    workingPath = filesDir.absolutePath
                     tempPath = cacheDir.absolutePath
-                    commandServerListenPort = 0
-                    logMaxLines = 300
-                    debug = false
-                    crashReportSource = "service"
-                    appVersion = BuildConfig.VERSION_NAME
-                    appMarketingVersion = BuildConfig.VERSION_NAME
+                    fixAndroidStack = true
                 },
             )
         }

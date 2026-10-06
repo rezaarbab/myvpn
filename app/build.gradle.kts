@@ -65,6 +65,10 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // فشرده‌سازی .so داخل APK → حجم دانلود خیلی کمتر
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
