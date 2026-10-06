@@ -202,7 +202,7 @@ private fun DropdownField(label: String, options: List<String>, selected: String
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogsScreen(onBack: () -> Unit) {
+fun LogsScreen() {
     val logs by VpnManager.logs.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { VpnManager.observe() }
@@ -211,9 +211,6 @@ fun LogsScreen(onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("گزارش‌ها") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "بازگشت") }
-                },
                 actions = {
                     TextButton(onClick = { VpnManager.clearLogs() }) { Text("پاک‌سازی") }
                 },

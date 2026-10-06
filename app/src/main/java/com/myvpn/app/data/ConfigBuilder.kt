@@ -38,7 +38,8 @@ object ConfigBuilder {
                     put("type", "udp")
                     put("tag", "dns-direct")
                     put("server", "8.8.8.8")
-                    put("detour", "direct")
+                    // بدون detour: رفتار پیش‌فرض یعنی dial مستقیم؛
+                    // اعتبارسنجِ sing-box «detour به direct خالی» را رد می‌کند
                 })
             }
             put("final", "dns-remote")
