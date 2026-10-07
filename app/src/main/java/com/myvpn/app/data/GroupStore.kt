@@ -44,6 +44,8 @@ data class ProxyGroup(
  */
 object GroupStore {
 
+    private const val GROUP_INTERVAL_NS = 2_000_000_000L
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _groups = MutableStateFlow<List<ProxyGroup>>(emptyList())
@@ -61,6 +63,9 @@ object GroupStore {
             if (client != null) return@launch
             val options = CommandClientOptions()
             options.command = Libbox.CommandGroup
+            // سمت هسته این عدد را مستقیم به time.NewTicker می‌دهد؛ صفر یعنی
+            // «non-positive interval» و پانیک Go = SIGABRT در libbox.so
+            options.statusInterval = GROUP_INTERVAL_NS
             val newClient = CommandClient(Handler(), options)
             try {
                 newClient.connect()
