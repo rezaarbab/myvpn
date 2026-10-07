@@ -63,7 +63,10 @@ fun DashboardScreen(
     val totalDown by TrafficStore.totalDown.collectAsStateWithLifecycle()
     val totalUp by TrafficStore.totalUp.collectAsStateWithLifecycle()
 
-    LaunchedEffect(status) { if (status == VpnManager.Status.STARTED) GroupStore.observe() }
+    LaunchedEffect(status) {
+        VpnManager.observe()
+        if (status == VpnManager.Status.STARTED) GroupStore.observe()
+    }
 
     val connected = status == VpnManager.Status.STARTED
     val active = profiles.firstOrNull { it.id == selectedId } ?: profiles.firstOrNull()

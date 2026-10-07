@@ -64,6 +64,9 @@ object VpnManager {
         if (value == Status.STOPPED) {
             _traffic.value = TrafficStats()
             _speedHistory.value = emptyList()
+            releaseClient()
+            // گروه‌های خروجی به سرویس وصل‌شده تعلق دارند؛ بعد از قطع بی‌اعتبارند
+            com.myvpn.app.data.GroupStore.release()
         }
         if (value == Status.STARTED) {
             scope.launch {

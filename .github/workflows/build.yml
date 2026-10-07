@@ -110,7 +110,25 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Build release APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: |
+          set +e
+          ./gradlew assembleRelease --stacktrace --console=plain 2>&1 | tee gradle.log
+          status="${PIPESTATUS[0]}"
+          set -e
+          # خطاهای کامپایل Kotlin را به‌صورت annotation منتشر می‌کند تا در تب Summary و از REST API هم دیده شوند
+          if [ "$status" != "0" ]; then
+            grep -E "^e: " gradle.log | sed 's/%/%25/g' | head -60 | while IFS= read -r line; do
+              path=$(printf '%s' "$line" | sed -E 's|^e: (file://)?([^:]+\.kt):.*|\2|')
+              line_no=$(printf '%s' "$line" | sed -E 's|^e: (file://)?[^:]+\.kt:([0-9]+):.*|\2|')
+              if [ "$path" != "$line" ] && [ -n "$line_no" ]; then
+                echo "::error file=${path##*/},line=${line_no}::${line}"
+              else
+                echo "::error::${line}"
+              fi
+            done
+            echo "::error::build failed (exit $status)"
+          fi
+          exit "$status"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

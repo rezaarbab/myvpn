@@ -172,7 +172,7 @@ fun NavigationDock(
                 .height(DockBarHeight)
                 .padding(4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             destinations.forEach { destination ->
                 DockItem(

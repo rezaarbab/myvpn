@@ -14,7 +14,6 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.pow
-import kotlin.math.sign
 import kotlin.math.sin
 
 /**
