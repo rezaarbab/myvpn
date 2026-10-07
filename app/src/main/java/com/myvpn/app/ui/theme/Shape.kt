@@ -1,6 +1,5 @@
 package com.myvpn.app.ui.theme
 
-import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -29,7 +28,7 @@ class SuperEllipseShape(private val cornerRadius: Dp) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         val w = size.width
         val h = size.height
-        if (w <= 0f || h <= 0f) return Outline.Empty
+        if (w <= 0f || h <= 0f) return Outline.Generic(Path())
         val radius = with(density) { cornerRadius.toPx() }
         if (radius <= 0.5f) {
             return Outline.Generic(Path().apply { addRect(Rect(0f, 0f, w, h)) })
@@ -82,7 +81,9 @@ object AppRadius {
     val full = 512.dp   // پیل (دکمه‌ی شناور، نوار ناوبری)
 }
 
-/** فاصله‌های پیش‌فرض صفحه — spacing 12، padding 16 (FlClash). */
+/**
+ * فاصله‌های پیش‌فرض صفحه — spacing 12، padding 16 (FlClash).
+ */
 object AppSpacing {
     val grid = 12.dp
     val page = 16.dp
@@ -91,17 +92,3 @@ object AppSpacing {
     val cardUnit = 80.dp      // ارتفاع یک خط در گرید ویجت
     val cardGap = 12.dp
 }
-
-/**
- * سازنده‌ی اصلی `Shapes(...)` نوع `CornerBasedShape` می‌خواهد، پس از سازنده‌ی آرایه‌ای
- * استفاده می‌کنیم تا همه‌ی شکل‌های پیش‌فرض تم هم ابربیضی بمانند.
- */
-fun appShapes() = Shapes(
-    arrayOf<Shape>(
-        SuperEllipseShape(AppRadius.xs),
-        SuperEllipseShape(AppRadius.sm),
-        SuperEllipseShape(AppRadius.md),
-        SuperEllipseShape(AppRadius.lg),
-        SuperEllipseShape(AppRadius.xl),
-    ),
-)

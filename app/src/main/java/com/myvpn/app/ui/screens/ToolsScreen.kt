@@ -42,9 +42,11 @@ import com.myvpn.app.ui.components.AppListItem
 import com.myvpn.app.ui.components.ListHeader
 import com.myvpn.app.ui.components.SwitchListItem
 import com.myvpn.app.ui.formatBytes
+import com.myvpn.app.ui.theme.AppRadius
 import com.myvpn.app.ui.theme.DYNAMIC_SEED
 import com.myvpn.app.ui.theme.SeedOrder
 import com.myvpn.app.ui.theme.SeedThemes
+import com.myvpn.app.ui.theme.SuperEllipseShape
 import io.nekohasekai.libbox.Libbox
 
 /**
@@ -199,6 +201,7 @@ private fun ChoiceDialog(
             TextButton(onClick = onDismiss) { Text("بستن") }
         },
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = SuperEllipseShape(AppRadius.xxl),
     )
 }
 

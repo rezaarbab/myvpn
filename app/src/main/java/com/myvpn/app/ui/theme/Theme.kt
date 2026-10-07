@@ -80,7 +80,6 @@ fun MyVpnTheme(
     CompositionLocalProvider(LocalAppExtras provides extras) {
         MaterialTheme(
             colorScheme = scheme,
-            shapes = appShapes(),
             content = content,
         )
     }
