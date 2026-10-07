@@ -18,7 +18,6 @@ import io.nekohasekai.libbox.PlatformInterface
 import io.nekohasekai.libbox.StringIterator
 import io.nekohasekai.libbox.TunOptions
 import io.nekohasekai.libbox.WIFIState
-import java.net.Inet6Address
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
 
@@ -90,7 +89,12 @@ interface PlatformInterfaceImpl : PlatformInterface {
             boxInterface.index = javaInterface.index
             runCatching { boxInterface.mtu = javaInterface.mtu }
             boxInterface.dnsServer =
-                StringArray(linkProperties.dnsServers.mapNotNull { it.hostAddress }.iterator())
+                StringArray(
+                    linkProperties.dnsServers.mapNotNull { dns ->
+                        // آدرس‌های IPv6 لینک‌لوکال پسوند zone (‎%wlan0‎) دارند که netip قبول نمی‌کند
+                        dns.hostAddress?.substringBefore('%')
+                    }.iterator(),
+                )
             boxInterface.type = when {
                 capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> Libbox.InterfaceTypeWIFI
                 capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> Libbox.InterfaceTypeCellular
@@ -107,12 +111,10 @@ interface PlatformInterfaceImpl : PlatformInterface {
             boxInterface.metered =
                 !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
             boxInterface.addresses = StringArray(
-                javaInterface.interfaceAddresses.map { address ->
-                    if (address.address is Inet6Address) {
-                        "${(address.address as Inet6Address).hostAddress}/${address.networkPrefixLength}"
-                    } else {
-                        "${address.address.hostAddress}/${address.networkPrefixLength}"
-                    }
+                javaInterface.interfaceAddresses.mapNotNull { address ->
+                    val host = address.address.hostAddress ?: return@mapNotNull null
+                    // حذف zone از IPv6 (‎%wlan0‎ و مانند آن) — وگرنه netip.ParsePrefix پنیک می‌کند
+                    "${host.substringBefore('%')}/${address.networkPrefixLength}"
                 }.iterator(),
             )
             interfaces.add(boxInterface)
