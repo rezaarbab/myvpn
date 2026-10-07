@@ -153,6 +153,7 @@ fun AppNavHost(onConnect: () -> Unit) {
                             if (status == VpnManager.Status.STOPPED) onConnect() else TunnelService.stop(context)
                         }
                     },
+                    shape = CircleShape,
                     containerColor = if (connected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                 ) {
