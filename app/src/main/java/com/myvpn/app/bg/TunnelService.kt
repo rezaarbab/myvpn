@@ -177,8 +177,14 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
         }
 
         val inet4Address = options.inet4Address
+        var tunIpv4: String? = null
+        var tunIpv4Bits = 32
         while (inet4Address.hasNext()) {
             val prefix = inet4Address.next()!!
+            if (tunIpv4 == null) {
+                tunIpv4 = prefix.address()
+                tunIpv4Bits = prefix.prefix()
+            }
             builder.addAddress(prefix.address(), prefix.prefix())
         }
         val inet6Address = options.inet6Address
@@ -249,6 +255,17 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
                 runCatching { builder.addDisallowedApplication(excludePackage.next()) }
             }
         }
+
+        // sing-box کوئری DNS را روی اولین آدرسِ بعدیِ همین اینترفیس می‌گیرد
+        // (دقیقاً همان چیزی که libbox در GetDNSServerAddress حساب می‌کند). بدون
+        // addDnsServer اندروید به DNS زیرساخت می‌فرستد؛ آن بسته‌ها هم از تونل به
+        // سرور می‌روند و آنجا به آدرس خصوصی مقصد نمی‌رسند → اتصال برقرار، صفر داده.
+        val dnsAddress = if (tunIpv4Bits < 32) tunIpv4?.nextHostAddress() else null
+        dnsAddress?.let { builder.addDnsServer(it) }
+        VpnManager.appendLog(
+            "tun: mtu=${options.mtu} v4=$tunIpv4/$tunIpv4Bits dns=${dnsAddress ?: "none"} " +
+                "autoRoute=${options.autoRoute} strictRoute=${options.strictRoute}",
+        )
 
         val pfd = builder.establish()
             ?: error("android: the application is not prepared or is revoked")
@@ -366,3 +383,19 @@ class ServiceNotificationDelegate(private val service: android.app.Service) {
             .build()
     }
 }
+
+/**
+ * اولین آدرسِ بعدیِ یک نشانی — همان قاعده‌ای که libbox برای «ربودن DNS» استفاده
+ * می‌کند (INET4[0] + 1). با carry روی آخرین اکتت کار می‌کند تا برای /30 درست باشد.
+ */
+private fun String.nextHostAddress(): String? = runCatching {
+    val bytes = InetAddress.getByName(this).address
+    var i = bytes.size - 1
+    while (i >= 0) {
+        val incremented = (bytes[i].toInt() and 0xFF) + 1
+        bytes[i] = incremented.toByte()
+        if (incremented <= 0xFF) break
+        i--
+    }
+    InetAddress.getByAddress(bytes).hostAddress
+}.getOrNull()
