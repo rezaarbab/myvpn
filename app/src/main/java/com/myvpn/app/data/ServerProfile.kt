@@ -28,6 +28,9 @@ data class ServerProfile(
     val obfsPassword: String = "",
     val congestionControl: String = "",
     val rawConfig: String = "",
+    // مصرف تجمعی این سرور (بایت)
+    val usedDown: Long = 0,
+    val usedUp: Long = 0,
 ) {
     val displayAddress: String
         get() = if (type == "custom") "کانفیگ سفارشی" else "$server:$serverPort"

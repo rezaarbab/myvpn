@@ -64,6 +64,16 @@ object ProfileStore {
         prefs.edit().putString(KEY_SELECTED, id).apply()
     }
 
+    /** افزودن مصرف نشست به مجموع تجمعی سرور */
+    fun addUsage(id: String, down: Long, up: Long) {
+        val current = _profiles.value.toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index < 0 || (down <= 0 && up <= 0)) return
+        val p = current[index]
+        current[index] = p.copy(usedDown = p.usedDown + down, usedUp = p.usedUp + up)
+        persist(current)
+    }
+
     fun selected(): ServerProfile? {
         val id = _selectedId.value ?: return _profiles.value.firstOrNull()
         return _profiles.value.firstOrNull { it.id == id } ?: _profiles.value.firstOrNull()

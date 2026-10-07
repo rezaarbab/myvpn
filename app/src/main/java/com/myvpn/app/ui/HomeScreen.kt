@@ -296,9 +296,9 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    StatTile("↓", formatBytes(traffic.downlink) + "/s", Modifier.weight(1f))
-                    StatTile("↑", formatBytes(traffic.uplink) + "/s", Modifier.weight(1f))
-                    StatTile("Σ", formatBytes(traffic.downlinkTotal + traffic.uplinkTotal), Modifier.weight(1f))
+                    StatTile("↓", "دانلود", formatBytes(traffic.downlink) + "/s", Modifier.weight(1f))
+                    StatTile("↑", "آپلود", formatBytes(traffic.uplink) + "/s", Modifier.weight(1f))
+                    StatTile("Σ", "کل نشست", formatBytes(traffic.downlinkTotal + traffic.uplinkTotal), Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(6.dp))
                 // مصرف تجمعی کل + ریست
@@ -413,16 +413,34 @@ private fun formatBytes(value: Long): String {
 }
 
 @Composable
-private fun StatTile(icon: String, value: String, modifier: Modifier = Modifier) {
+private fun StatTile(icon: String, label: String, value: String, modifier: Modifier = Modifier) {
     Card(modifier = modifier, shape = RoundedCornerShape(14.dp)) {
         Column(
             modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(icon, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-            Text(value, style = MaterialTheme.typography.titleSmall)
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(icon, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleSmall, maxLines = 1)
         }
     }
+}
+
+/** رنگ پینگ: خوب سبز، متوسط زرد، ضعیف قرمز */
+@Composable
+private fun pingColor(ms: Long?): Color = when {
+    ms == null -> MaterialTheme.colorScheme.error
+    ms < 120 -> Color(0xFF2E7D32)
+    ms < 300 -> Color(0xFFF9A825)
+    else -> MaterialTheme.colorScheme.error
 }
 
 private enum class SortMode(val label: String) {
@@ -436,6 +454,8 @@ private enum class SortMode(val label: String) {
 fun ServersScreen(onAdd: () -> Unit) {
     val profiles by ProfileStore.profiles.collectAsStateWithLifecycle()
     val selectedId by ProfileStore.selectedId.collectAsStateWithLifecycle()
+    val status by VpnManager.status.collectAsStateWithLifecycle()
+    val traffic by VpnManager.traffic.collectAsStateWithLifecycle()
     var deleteTarget by remember { mutableStateOf<ServerProfile?>(null) }
 
     var query by remember { mutableStateOf("") }
@@ -444,6 +464,24 @@ fun ServersScreen(onAdd: () -> Unit) {
     val pingResults = remember { mutableStateMapOf<String, Long?>() }
     var pinging by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    val connected = status == VpnManager.Status.STARTED
+
+    fun pingAll() {
+        if (pinging || profiles.isEmpty()) return
+        pinging = true
+        scope.launch {
+            coroutineScope {
+                profiles.map { p ->
+                    async { pingResults[p.id] = ServerPinger.ping(p.server, p.serverPort) }
+                }.awaitAll()
+            }
+            pinging = false
+        }
+    }
+
+    // پینگ خودکار هنگام ورود به تب سرورها
+    LaunchedEffect(Unit) { pingAll() }
 
     val filtered = profiles
         .filter {
@@ -499,20 +537,7 @@ fun ServersScreen(onAdd: () -> Unit) {
                         }
                         TextButton(
                             enabled = !pinging && filtered.isNotEmpty(),
-                            onClick = {
-                                pinging = true
-                                scope.launch {
-                                    coroutineScope {
-                                        filtered.map { p ->
-                                            async {
-                                                pingResults[p.id] =
-                                                    ServerPinger.ping(p.server, p.serverPort)
-                                            }
-                                        }.awaitAll()
-                                    }
-                                    pinging = false
-                                }
-                            },
+                            onClick = { pingAll() },
                         ) { Text(if (pinging) "در حال پینگ…" else "پینگ همه") }
                     }
                 }
@@ -530,14 +555,32 @@ fun ServersScreen(onAdd: () -> Unit) {
                 items(filtered.size) { index ->
                     val profile = filtered[index]
                     val ping = pingResults[profile.id]
-                    val pingText = when {
-                        !pinging && ping != null -> " • ${ping}ms"
-                        !pinging && ping == null -> ""
-                        else -> " • …"
+                    val isLive = connected && profile.id == selectedId
+                    val down = if (isLive) traffic.downlinkTotal else profile.usedDown
+                    val up = if (isLive) traffic.uplinkTotal else profile.usedUp
+                    val usageText = when {
+                        isLive -> "↓${formatBytes(down)} ↑${formatBytes(up)} (زنده)"
+                        down > 0 || up > 0 -> "↓${formatBytes(down)} ↑${formatBytes(up)}"
+                        else -> null
                     }
                     ListItem(
                         headlineContent = { Text(profile.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        supportingContent = { Text("${profile.type.uppercase()} • ${profile.displayAddress}$pingText") },
+                        supportingContent = {
+                            Column {
+                                Text(
+                                    "${profile.type.uppercase()} • ${profile.displayAddress}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (usageText != null) {
+                                    Text(
+                                        usageText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        },
                         leadingContent = {
                             RadioButton(
                                 selected = profile.id == selectedId,
@@ -545,8 +588,24 @@ fun ServersScreen(onAdd: () -> Unit) {
                             )
                         },
                         trailingContent = {
-                            IconButton(onClick = { deleteTarget = profile }) {
-                                Icon(Icons.Filled.Delete, contentDescription = "حذف")
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                when {
+                                    pinging && ping == null ->
+                                        Text(
+                                            "…",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    ping != null ->
+                                        Text(
+                                            "${ping}ms",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = pingColor(ping),
+                                        )
+                                }
+                                IconButton(onClick = { deleteTarget = profile }) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "حذف")
+                                }
                             }
                         },
                     )

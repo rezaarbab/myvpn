@@ -119,10 +119,13 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
             runCatching { it.close() }
         }
         fileDescriptor = null
-        // ثبت مصرف این نشست در مجموع کل
+        // ثبت مصرف این نشست در مجموع کل و در پروفایل سرور انتخاب‌شده
         val sessionTraffic = VpnManager.traffic.value
         if (sessionTraffic.downlinkTotal > 0 || sessionTraffic.uplinkTotal > 0) {
             TrafficStore.addSession(sessionTraffic.downlinkTotal, sessionTraffic.uplinkTotal)
+            ProfileStore.selected()?.id?.let { id ->
+                ProfileStore.addUsage(id, sessionTraffic.downlinkTotal, sessionTraffic.uplinkTotal)
+            }
         }
         boxService?.let { service ->
             runCatching { service.close() }
