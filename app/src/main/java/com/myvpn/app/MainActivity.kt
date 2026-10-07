@@ -9,10 +9,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import com.myvpn.app.bg.TunnelService
-import com.myvpn.app.data.ProfileStore
-import com.myvpn.app.data.TrafficStore
+import com.myvpn.app.data.AppSettings
 import com.myvpn.app.ui.AppNavHost
 import com.myvpn.app.ui.theme.MyVpnTheme
 
@@ -57,10 +59,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ProfileStore.init(this)
-        TrafficStore.init(this)
         setContent {
-            MyVpnTheme {
+            val themeMode by AppSettings.themeMode.collectAsState()
+            val darkTheme = when (themeMode) {
+                "light" -> false
+                "dark" -> true
+                else -> isSystemInDarkTheme()
+            }
+            MyVpnTheme(darkTheme = darkTheme) {
                 AppNavHost(onConnect = { requestConnect() })
             }
         }

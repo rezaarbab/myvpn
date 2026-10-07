@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +45,7 @@ import com.myvpn.app.data.ProfileStore
 fun AddServerScreen(onBack: () -> Unit) {
     var link by rememberSaveable { mutableStateOf("") }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
+    val clipboardManager = LocalClipboardManager.current
 
     Scaffold(
         topBar = {
@@ -78,6 +80,13 @@ fun AddServerScreen(onBack: () -> Unit) {
                         minLines = 3,
                         label = { Text("چسباندن لینک") },
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = {
+                            val clip = clipboardManager.primaryClip?.getItemAt(0)?.text
+                            if (!clip.isNullOrBlank()) link = clip.toString()
+                        }) { Text("از کلیپ‌بورد") }
+                        TextButton(onClick = { link = "" }) { Text("پاک کردن") }
+                    }
                     Button(
                         onClick = {
                             try {

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -98,6 +99,7 @@ private const val ROUTE_HOME = "home"
 private const val ROUTE_SERVERS = "servers"
 private const val ROUTE_LOGS = "logs"
 private const val ROUTE_ADD = "add"
+private const val ROUTE_SETTINGS = "settings"
 
 @Composable
 fun AppNavHost(onConnect: () -> Unit) {
@@ -127,6 +129,12 @@ fun AppNavHost(onConnect: () -> Unit) {
                         icon = { Icon(Icons.Filled.Info, contentDescription = null) },
                         label = { Text("گزارش") },
                     )
+                    NavigationBarItem(
+                        selected = currentRoute == ROUTE_SETTINGS,
+                        onClick = { navigateTab(navController, ROUTE_SETTINGS) },
+                        icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                        label = { Text("تنظیمات") },
+                    )
                 }
             }
         },
@@ -150,6 +158,9 @@ fun AppNavHost(onConnect: () -> Unit) {
             }
             composable(ROUTE_LOGS) {
                 LogsScreen()
+            }
+            composable(ROUTE_SETTINGS) {
+                SettingsScreen()
             }
         }
     }

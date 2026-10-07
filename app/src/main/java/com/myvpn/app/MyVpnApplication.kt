@@ -6,6 +6,9 @@ import android.app.NotificationManager
 import android.os.Build
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.SetupOptions
+import com.myvpn.app.data.AppSettings
+import com.myvpn.app.data.ProfileStore
+import com.myvpn.app.data.TrafficStore
 import java.io.File
 
 class MyVpnApplication : Application() {
@@ -13,6 +16,11 @@ class MyVpnApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        // ذخیره‌گاه‌ها در سطح پروسه مقداردهی می‌شوند (برای BootReceiver هم لازم است)
+        ProfileStore.init(this)
+        TrafficStore.init(this)
+        AppSettings.init(this)
 
         val stderrFile = File(filesDir, "go-stderr.log")
 
