@@ -13,6 +13,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,6 +72,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -266,22 +268,25 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                     color = statusColor,
                 )
             }
-            FilledIconButton(
-                onClick = {
-                    if (!busy) {
-                        if (status == VpnManager.Status.STOPPED) onConnect() else TunnelService.stop(context)
-                    }
-                },
-                modifier = Modifier.size(136.dp),
-                shape = CircleShape,
-                colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
-                    containerColor = if (connected) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = if (connected) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
+            Box(
+                modifier = Modifier
+                    .size(136.dp)
+                    .shadow(16.dp, CircleShape)
+                    .background(
+                        if (connected) com.myvpn.app.ui.theme.DisconnectGradient else com.myvpn.app.ui.theme.ConnectGradient,
+                        CircleShape,
+                    )
+                    .clickable {
+                        if (!busy) {
+                            if (status == VpnManager.Status.STOPPED) onConnect() else TunnelService.stop(context)
+                        }
+                    },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     if (connected) Icons.Filled.Close else Icons.Filled.PlayArrow,
                     contentDescription = null,
+                    tint = Color.White,
                     modifier = Modifier.size(60.dp),
                 )
             }
@@ -362,7 +367,7 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                        .background(com.myvpn.app.ui.theme.BrandGradient, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(

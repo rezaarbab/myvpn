@@ -3,6 +3,7 @@ package com.myvpn.app.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -82,8 +83,8 @@ fun AddServerScreen(onBack: () -> Unit) {
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = {
-                            val clip = clipboardManager.primaryClip?.getItemAt(0)?.text
-                            if (!clip.isNullOrBlank()) link = clip.toString()
+                            val clip = clipboardManager.getText()?.text
+                            if (!clip.isNullOrBlank()) link = clip
                         }) { Text("از کلیپ‌بورد") }
                         TextButton(onClick = { link = "" }) { Text("پاک کردن") }
                     }
