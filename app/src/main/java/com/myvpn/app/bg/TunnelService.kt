@@ -91,6 +91,7 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
             service.start()
             boxService = service
 
+            VpnManager.appendLog("تونل فعال شد — ${profile.name} (${profile.type})")
             VpnManager.observe()
             withContext(Dispatchers.Main) {
                 notificationDelegate.update(profile.name, "متصل")

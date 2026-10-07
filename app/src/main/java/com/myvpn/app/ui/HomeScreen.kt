@@ -287,13 +287,7 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
             }
         }
 
-        // ---- کارت تشخیص شبکه ----
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            InfoCard("IP عمومی", publicIp ?: "—", Modifier.weight(1f), green = publicIp != null)
-            InfoCard("IP داخلی", intranetIp ?: "—", Modifier.weight(1f))
-        }
-
-        // ---- کارت سرور فعال + مصرف ----
+        // ---- کارت سرور فعال + تشخیص شبکه (ترتیب FlClash: outboundMode → networkDetection) ----
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Card(
                 onClick = onOpenServers,
@@ -334,6 +328,8 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                 }
             }
 
+            InfoCard("IP عمومی", publicIp ?: "—", Modifier.weight(1f), green = publicIp != null)
+
             // کارت مصرف با دونات + لجند
             Card(Modifier.weight(1f), shape = RoundedCornerShape(24.dp)) {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -354,6 +350,8 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                     )
                 }
             }
+
+            InfoCard("IP داخلی", intranetIp ?: "—", Modifier.weight(1f))
         }
 
         // ---- خطا ----

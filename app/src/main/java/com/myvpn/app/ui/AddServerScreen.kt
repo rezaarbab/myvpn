@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myvpn.app.VpnManager
@@ -115,6 +116,7 @@ fun AddServerScreen(onBack: () -> Unit) {
 @Composable
 fun LogsScreen() {
     val logs by VpnManager.logs.collectAsStateWithLifecycle()
+    val clipboardManager = LocalClipboardManager.current
 
     LaunchedEffect(Unit) { VpnManager.observe() }
 
@@ -123,6 +125,9 @@ fun LogsScreen() {
             TopAppBar(
                 title = { Text("گزارش‌ها") },
                 actions = {
+                    TextButton(onClick = {
+                        clipboardManager.setText(AnnotatedString(logs.joinToString("\n")))
+                    }) { Text("کپی همه") }
                     TextButton(onClick = { VpnManager.clearLogs() }) { Text("پاک‌سازی") }
                 },
             )

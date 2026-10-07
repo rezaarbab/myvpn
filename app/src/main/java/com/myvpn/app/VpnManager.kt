@@ -172,10 +172,11 @@ object VpnManager {
 
     private class Handler : CommandClientHandler {
         override fun connected() {
-            Log.d("VpnManager", "command client connected")
+            VpnManager.appendLog("آمار: اتصال به جریان وضعیت برقرار شد")
         }
 
         override fun disconnected(message: String?) {
+            VpnManager.appendLog("آمار: قطع شد (${message ?: "نامشخص"})")
             VpnManager.onClientDisconnected()
         }
 
