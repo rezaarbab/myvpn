@@ -91,7 +91,7 @@ fun AddProfileScreen(
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
-                    if (editing) {
+                    if (existing != null) {
                         ProfileStore.save(existing.copy(rawConfig = text))
                         message = "پروفایل به‌روزرسانی شد"
                     } else {

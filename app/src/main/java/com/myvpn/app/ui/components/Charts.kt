@@ -194,31 +194,6 @@ fun DonutChart(
     }
 }
 
-/** لجند دونات: pill رنگی ۲۰×۸dp + برچسب + مقدار */
-@Composable
-fun UsageLegendRow(label: String, dotColor: Color, value: String, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 1.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .size(width = 20.dp, height = 8.dp)
-                .background(dotColor, CircleShape),
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(value, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
 /** کارت سرعت شبکه: دو نمودار روی هم (دانلود بزرگ‌تر، آپلود کوچک‌تر) + سرِ عددی. */
 @Composable
 fun NetworkSpeedCard(

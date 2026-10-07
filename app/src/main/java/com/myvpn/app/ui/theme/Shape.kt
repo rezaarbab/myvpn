@@ -2,6 +2,7 @@ package com.myvpn.app.ui.theme
 
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
@@ -28,18 +29,18 @@ class SuperEllipseShape(private val cornerRadius: Dp) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         val w = size.width
         val h = size.height
-        if (w <= 0f || h <= 0f) return Outline.None
+        if (w <= 0f || h <= 0f) return Outline.Empty
         val radius = with(density) { cornerRadius.toPx() }
         if (radius <= 0.5f) {
-            return Outline.Generic(Path().apply { addRect(0f, 0f, w, h) })
+            return Outline.Generic(Path().apply { addRect(Rect(0f, 0f, w, h)) })
         }
         return Outline.Generic(superEllipsePath(w, h, radius))
     }
 }
 
 private const val SAMPLES = 14
-private const val PI = Math.PI.toFloat()
-private const val HALF_PI = PI / 2f
+private val PI = Math.PI.toFloat()
+private val HALF_PI = PI / 2f
 
 fun superEllipsePath(width: Float, height: Float, requestedRadius: Float): Path {
     val r = min(requestedRadius, min(width, height) / 2f)
@@ -91,10 +92,16 @@ object AppSpacing {
     val cardGap = 12.dp
 }
 
+/**
+ * سازنده‌ی اصلی `Shapes(...)` نوع `CornerBasedShape` می‌خواهد، پس از سازنده‌ی آرایه‌ای
+ * استفاده می‌کنیم تا همه‌ی شکل‌های پیش‌فرض تم هم ابربیضی بمانند.
+ */
 fun appShapes() = Shapes(
-    extraSmall = SuperEllipseShape(AppRadius.xs),
-    small = SuperEllipseShape(AppRadius.sm),
-    medium = SuperEllipseShape(AppRadius.md),
-    large = SuperEllipseShape(AppRadius.lg),
-    extraLarge = SuperEllipseShape(AppRadius.xl),
+    arrayOf<Shape>(
+        SuperEllipseShape(AppRadius.xs),
+        SuperEllipseShape(AppRadius.sm),
+        SuperEllipseShape(AppRadius.md),
+        SuperEllipseShape(AppRadius.lg),
+        SuperEllipseShape(AppRadius.xl),
+    ),
 )
