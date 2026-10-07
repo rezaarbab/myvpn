@@ -107,31 +107,41 @@ fun AppNavHost(onConnect: () -> Unit) {
     Scaffold(
         bottomBar = {
             if (currentRoute != ROUTE_ADD) {
-                NavigationBar {
-                    NavigationBarItem(
-                        selected = currentRoute == ROUTE_HOME,
-                        onClick = { navigateTab(navController, ROUTE_HOME) },
-                        icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                        label = { Text("داشبورد") },
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == ROUTE_SERVERS,
-                        onClick = { navigateTab(navController, ROUTE_SERVERS) },
-                        icon = { Icon(Icons.Filled.List, contentDescription = null) },
-                        label = { Text("سرورها") },
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == ROUTE_LOGS,
-                        onClick = { navigateTab(navController, ROUTE_LOGS) },
-                        icon = { Icon(Icons.Filled.Info, contentDescription = null) },
-                        label = { Text("گزارش") },
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == ROUTE_SETTINGS,
-                        onClick = { navigateTab(navController, ROUTE_SETTINGS) },
-                        icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                        label = { Text("تنظیمات") },
-                    )
+                // نویگیشن پیل شناور (سبک FlClash)
+                Surface(
+                    modifier = Modifier
+                        .padding(horizontal = 36.dp, vertical = 10.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    shadowElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                ) {
+                    NavigationBar(containerColor = Color.Transparent) {
+                        NavigationBarItem(
+                            selected = currentRoute == ROUTE_HOME,
+                            onClick = { navigateTab(navController, ROUTE_HOME) },
+                            icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+                            label = { Text("داشبورد") },
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == ROUTE_SERVERS,
+                            onClick = { navigateTab(navController, ROUTE_SERVERS) },
+                            icon = { Icon(Icons.Filled.List, contentDescription = null) },
+                            label = { Text("سرورها") },
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == ROUTE_LOGS,
+                            onClick = { navigateTab(navController, ROUTE_LOGS) },
+                            icon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                            label = { Text("گزارش") },
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == ROUTE_SETTINGS,
+                            onClick = { navigateTab(navController, ROUTE_SETTINGS) },
+                            icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                            label = { Text("تنظیمات") },
+                        )
+                    }
                 }
             }
         },
@@ -206,6 +216,8 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     val selectedId by ProfileStore.selectedId.collectAsStateWithLifecycle()
     val totalDown by TrafficStore.totalDown.collectAsStateWithLifecycle()
     val totalUp by TrafficStore.totalUp.collectAsStateWithLifecycle()
+    val publicIp by VpnManager.publicIp.collectAsStateWithLifecycle()
+    val intranetIp by VpnManager.intranetIp.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { VpnManager.observe() }
 
@@ -218,37 +230,28 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // ---- هدر: عنوان + دکمه وضعیت (سبک FlClash) ----
+        // ---- هدر ----
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("داشبورد", style = MaterialTheme.typography.headlineSmall)
-            if (status == VpnManager.Status.STARTING || status == VpnManager.Status.STOPPING) {
-                CircularProgressIndicator(Modifier.size(34.dp), strokeWidth = 3.dp)
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .background(
-                            if (connected) Color(0xFF2E9E6B) else MaterialTheme.colorScheme.surfaceVariant,
-                            CircleShape,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        if (connected) Icons.Filled.CheckCircle else Icons.Filled.Close,
-                        contentDescription = null,
-                        tint = if (connected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+            when (status) {
+                VpnManager.Status.STARTED -> Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF2E9E6B),
+                    modifier = Modifier.size(30.dp),
+                )
+                VpnManager.Status.STARTING, VpnManager.Status.STOPPING ->
+                    CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                else -> Unit
             }
         }
 
         // ---- کارت سرعت شبکه با نمودار زنده ----
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) {
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -271,10 +274,7 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.fillMaxWidth().height(150.dp)) {
-                    SpeedChart(
-                        history = speedHistory,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    SpeedChart(history = speedHistory, modifier = Modifier.fillMaxSize())
                     if (!connected && speedHistory.isEmpty()) {
                         Text(
                             "برای مشاهده‌ی نمودار وصل شوید",
@@ -287,37 +287,18 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
             }
         }
 
-        // ---- ردیف دوم: مصرف + سرور فعال ----
+        // ---- کارت تشخیص شبکه ----
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // کارت مصرف با دونات
-            Card(Modifier.weight(1f), shape = RoundedCornerShape(20.dp)) {
-                Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("مصرف", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.weight(1f))
-                        TextButton(
-                            onClick = { TrafficStore.reset() },
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                        ) { Text("ریست", style = MaterialTheme.typography.labelMedium) }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    UsageDonut(
-                        down = traffic.downlinkTotal,
-                        up = traffic.uplinkTotal,
-                        modifier = Modifier.size(96.dp),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    UsageLegend("↓", "نشست", formatBytes(traffic.downlinkTotal))
-                    UsageLegend("↑", "نشست", formatBytes(traffic.uplinkTotal))
-                    UsageLegend("Σ", "کل", formatBytes(totalDown + totalUp))
-                }
-            }
+            InfoCard("IP عمومی", publicIp ?: "—", Modifier.weight(1f), green = publicIp != null)
+            InfoCard("IP داخلی", intranetIp ?: "—", Modifier.weight(1f))
+        }
 
-            // کارت سرور فعال
+        // ---- کارت سرور فعال + مصرف ----
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Card(
                 onClick = onOpenServers,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text("سرور فعال", style = MaterialTheme.typography.titleMedium)
@@ -352,6 +333,27 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                     )
                 }
             }
+
+            // کارت مصرف با دونات + لجند
+            Card(Modifier.weight(1f), shape = RoundedCornerShape(24.dp)) {
+                Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("مصرف", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    UsageDonut(
+                        down = traffic.downlinkTotal,
+                        up = traffic.uplinkTotal,
+                        modifier = Modifier.size(84.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    UsageLegend("آپلود", MaterialTheme.colorScheme.secondary, "↑ ${formatBytes(traffic.uplinkTotal)}")
+                    UsageLegend("دانلود", MaterialTheme.colorScheme.primary, "↓ ${formatBytes(traffic.downlinkTotal)}")
+                    Text(
+                        "کل: ${formatBytes(totalDown + totalUp)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         // ---- خطا ----
@@ -368,17 +370,45 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     }
 }
 
-// ---------- پورت دقیق LineChart و DonutChart از FlClash ----------
+@Composable
+private fun InfoCard(title: String, value: String, modifier: Modifier = Modifier, green: Boolean = false) {
+    Card(modifier = modifier, shape = RoundedCornerShape(24.dp)) {
+        Column(Modifier.padding(14.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (green) Color(0xFF2E9E6B) else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
 
+@Composable
+private fun UsageLegend(label: String, dotColor: Color, value: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(8.dp).background(dotColor, CircleShape))
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+/** نمودار خطی زنده — پورت دقیق line_chart.dart از FlClash */
 private const val CHART_CAPACITY = 60
-private const val MIN_SPEED_SCALE = 8.0 * 1024.0 // کف مقیاس نمودار (۸ کیلوبایت)
+private const val MIN_SPEED_SCALE = 8.0 * 1024.0
 private const val BLUR_SIGMA = 1.5
 private val BLUR_RADIUS = kotlin.math.ceil(BLUR_SIGMA * 2.5).toInt()
 private val BLUR_KERNEL = FloatArray(BLUR_RADIUS + 1) { d ->
     kotlin.math.exp(-d * d / (2.0 * BLUR_SIGMA * BLUR_SIGMA)).toFloat()
 }
 
-/** گاوسی‌بلور — همان _Series._blur در FlClash */
 private fun gaussianBlur(values: List<Double>): List<Double> = List(values.size) { i ->
     var sum = 0.0
     var weight = 0.0
@@ -390,7 +420,6 @@ private fun gaussianBlur(values: List<Double>): List<Double> = List(values.size)
     sum / weight
 }
 
-/** نمودار خطی زنده — پورت دقیق line_chart.dart: پنجره‌ی ثابت، بلور، Catmull-Rom با شیب clamp شده */
 @Composable
 private fun SpeedChart(history: List<Pair<Long, Long>>, modifier: Modifier = Modifier) {
     val lineColor = MaterialTheme.colorScheme.primary
@@ -415,7 +444,6 @@ private fun SpeedChart(history: List<Pair<Long, Long>>, modifier: Modifier = Mod
             else (((heights[i + 1] - heights[i - 1]) / 2.0).coerceIn(-3.0 * heights[i], 3.0 * heights[i]))
         }
 
-        // top = max(minScale, بالاترین نقطه‌ی منحنی)؛ مقیاس‌دهی تا baseline
         val top = maxOf(MIN_SPEED_SCALE, heights.max())
         val yScale = ((baseline - strokeWidthPx) / top).toFloat()
         fun mapY(yf: Double) = (baseline + yf * yScale).toFloat()
@@ -455,7 +483,7 @@ private fun SpeedChart(history: List<Pair<Long, Long>>, modifier: Modifier = Mod
     }
 }
 
-/** دونات مصرف — پورت دقیق donut_chart.dart: gap بین سگمنت‌ها و کپ گرد */
+/** دونات مصرف — پورت دقیق donut_chart.dart */
 @Composable
 private fun UsageDonut(down: Long, up: Long, modifier: Modifier = Modifier) {
     val upColor = MaterialTheme.colorScheme.secondary
@@ -522,19 +550,6 @@ private fun UsageDonut(down: Long, up: Long, modifier: Modifier = Modifier) {
             }
             start += sweep + weight * slot / 2f
         }
-    }
-}
-
-@Composable
-private fun UsageLegend(icon: String, label: String, value: String) {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 1.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(icon, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.labelLarge)
     }
 }
 

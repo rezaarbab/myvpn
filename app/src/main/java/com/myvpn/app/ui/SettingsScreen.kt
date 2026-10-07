@@ -42,6 +42,9 @@ fun SettingsScreen() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Column(Modifier.padding(start = 4.dp, bottom = 2.dp)) {
+                Text("عمومی", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("ظاهر", style = MaterialTheme.typography.titleMedium)
@@ -61,6 +64,9 @@ fun SettingsScreen() {
                 }
             }
 
+            Column(Modifier.padding(start = 4.dp, bottom = 2.dp)) {
+                Text("رفتار", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Row(
                     Modifier.padding(16.dp).fillMaxWidth(),
@@ -81,9 +87,11 @@ fun SettingsScreen() {
                 }
             }
 
+            Column(Modifier.padding(start = 4.dp, bottom = 2.dp)) {
+                Text("درباره", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("درباره", style = MaterialTheme.typography.titleMedium)
                     Text(
                         "MyVPN ${BuildConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.bodySmall,

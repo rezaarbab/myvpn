@@ -51,6 +51,51 @@ object VpnManager {
     private val _lastError = MutableStateFlow<String?>(null)
     val lastError: StateFlow<String?> = _lastError.asStateFlow()
 
+    private val _publicIp = MutableStateFlow<String?>(null)
+    val publicIp: StateFlow<String?> = _publicIp.asStateFlow()
+
+    private val _intranetIp = MutableStateFlow<String?>(null)
+    val intranetIp: StateFlow<String?> = _intranetIp.asStateFlow()
+
+    private var observerLoopStarted = false
+
+    fun setStatus(value: Status) {
+        _status.value = value
+        if (value == Status.STOPPED) {
+            _traffic.value = TrafficStats()
+            _speedHistory.value = emptyList()
+        }
+        if (value == Status.STARTED) {
+            scope.launch {
+                fetchPublicIp()
+                detectIntranetIp()
+            }
+        }
+    }
+
+    /** IP عمومی خروجی (از داخل تانل) */
+    private fun fetchPublicIp() {
+        runCatching {
+            val conn = java.net.URL("https://api.ipify.org").openConnection() as javax.net.ssl.HttpsURLConnection
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+            val ip = conn.inputStream.bufferedReader().readText().trim()
+            if (ip.isNotBlank()) _publicIp.value = ip
+        }.onFailure { _publicIp.value = null }
+    }
+
+    /** IP داخلی دستگاه در شبکه‌ی فعلی */
+    private fun detectIntranetIp() {
+        runCatching {
+            val ip = java.net.NetworkInterface.getNetworkInterfaces().toList()
+                .filter { it.isUp && !it.isLoopback }
+                .flatMap { it.inetAddresses.toList() }
+                .firstOrNull { it is java.net.Inet4Address && !it.isLoopbackAddress }
+                ?.hostAddress
+            if (!ip.isNullOrBlank()) _intranetIp.value = ip
+        }
+    }
+
     fun setStatus(value: Status) {
         _status.value = value
         if (value == Status.STOPPED) {
@@ -86,7 +131,15 @@ object VpnManager {
 
     fun observe() {
         scope.launch {
-            runCatching { ensureClient() }
+            if (observerLoopStarted) return@launch
+            observerLoopStarted = true
+            // حلقه‌ی شفابخش: اگر جریان وضعیت قطع شود دوباره وصل می‌شود
+            while (true) {
+                if (commandClient == null) {
+                    runCatching { ensureClient() }
+                }
+                kotlinx.coroutines.delay(2000)
+            }
         }
     }
 
@@ -101,9 +154,11 @@ object VpnManager {
         try {
             client.connect()
             commandClient = client
+            appendLog("وضعیت: متصل به جریان آمار هسته")
         } catch (e: Exception) {
-            // سرویس هنوز اجرا نشده؛ بعداً دوباره تلاش می‌شود
+            // سرویس هنوز اجرا نشده یا سوکت آماده نیست — حلقه دوباره تلاش می‌کند
             runCatching { client.disconnect() }
+            appendLog("command client: ${e.message}")
         }
     }
 
