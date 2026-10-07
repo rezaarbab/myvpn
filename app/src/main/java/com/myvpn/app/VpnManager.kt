@@ -116,10 +116,6 @@ object VpnManager {
 
     private var commandClient: CommandClient? = null
 
-    fun onTraffic(stats: TrafficStats) {
-        _traffic.value = stats
-    }
-
     fun onClientDisconnected() {
         synchronized(this) {
             runCatching { commandClient?.disconnect() }

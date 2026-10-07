@@ -85,6 +85,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 private const val ROUTE_HOME = "home"
 private const val ROUTE_SERVERS = "servers"
@@ -246,7 +247,7 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
         }
 
         // ---- کارت سرعت شبکه با نمودار زنده ----
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -258,12 +259,12 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
                         Text(
                             "↑ ${formatBytes(traffic.uplink)}/s",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
                             "↓ ${formatBytes(traffic.downlink)}/s",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -288,7 +289,7 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
         // ---- ردیف دوم: مصرف + سرور فعال ----
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             // کارت مصرف با دونات
-            Card(Modifier.weight(1f), shape = RoundedCornerShape(24.dp)) {
+            Card(Modifier.weight(1f), shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("مصرف", style = MaterialTheme.typography.titleMedium)
@@ -315,7 +316,7 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
             Card(
                 onClick = onOpenServers,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(20.dp),
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text("سرور فعال", style = MaterialTheme.typography.titleMedium)
@@ -366,89 +367,159 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     }
 }
 
-/** نمودار خطی زنده با فیل گرادیانی (سبک FlClash) */
+// ---------- پورت دقیق LineChart و DonutChart از FlClash ----------
+
+private const val CHART_CAPACITY = 60
+private const val MIN_SPEED_SCALE = 8.0 * 1024.0 // کف مقیاس نمودار (۸ کیلوبایت)
+private const val BLUR_SIGMA = 1.5
+private val BLUR_RADIUS = kotlin.math.ceil(BLUR_SIGMA * 2.5).toInt()
+private val BLUR_KERNEL = FloatArray(BLUR_RADIUS + 1) { d ->
+    kotlin.math.exp(-d * d / (2.0 * BLUR_SIGMA * BLUR_SIGMA)).toFloat()
+}
+
+/** گاوسی‌بلور — همان _Series._blur در FlClash */
+private fun gaussianBlur(values: List<Double>): List<Double> = List(values.size) { i ->
+    var sum = 0.0
+    var weight = 0.0
+    for (j in maxOf(0, i - BLUR_RADIUS)..minOf(values.size - 1, i + BLUR_RADIUS)) {
+        val k = BLUR_KERNEL[abs(j - i)]
+        sum += k * values[j]
+        weight += k
+    }
+    sum / weight
+}
+
+/** نمودار خطی زنده — پورت دقیق line_chart.dart: پنجره‌ی ثابت، بلور، Catmull-Rom با شیب clamp شده */
 @Composable
 private fun SpeedChart(history: List<Pair<Long, Long>>, modifier: Modifier = Modifier) {
-    val downColor = MaterialTheme.colorScheme.primary
-    val upColor = MaterialTheme.colorScheme.tertiary
+    val lineColor = MaterialTheme.colorScheme.primary
     Canvas(modifier) {
-        if (history.size < 2) return@Canvas
-        val maxV = maxOf(history.maxOf { it.first }, history.maxOf { it.second }, 1L).toFloat()
-        val w = size.width
-        val h = size.height
-        val step = w / 59f
+        val length = CHART_CAPACITY + BLUR_RADIUS + 1
+        val values = history.map { it.first.toDouble() }
+        val window = DoubleArray(length)
+        val count = minOf(values.size, length)
+        for (i in 0 until count) window[length - count + i] = values[values.size - count + i]
+        val heights = gaussianBlur(window.toList())
 
-        fun buildPath(get: (Pair<Long, Long>) -> Long): Path {
-            val path = Path()
-            history.forEachIndexed { i, sample ->
-                val x = w - (history.size - 1 - i) * step
-                val y = h - (get(sample) / maxV) * (h * 0.88f) - h * 0.06f
-                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-            }
-            return path
+        val strokeWidthPx = 2.dp.toPx()
+        val baseline = size.height * 0.7f
+        val step = size.width / (CHART_CAPACITY - 1)
+        val firstX = size.width - (length - 1) * step
+
+        fun xOf(i: Int) = firstX + i * step
+        fun yf(i: Int) = -heights[i]
+
+        val slopes = DoubleArray(length) { i ->
+            if (i == 0 || i == length - 1) 0.0
+            else (((heights[i + 1] - heights[i - 1]) / 2.0).coerceIn(-3.0 * heights[i], 3.0 * heights[i]))
         }
 
-        val downPath = buildPath { it.first }
-        val firstX = w - (history.size - 1) * step
-        val fillPath = Path().apply {
-            addPath(downPath)
-            lineTo(w, h)
-            lineTo(firstX, h)
+        // top = max(minScale, بالاترین نقطه‌ی منحنی)؛ مقیاس‌دهی تا baseline
+        val top = maxOf(MIN_SPEED_SCALE, heights.max())
+        val yScale = ((baseline - strokeWidthPx) / top).toFloat()
+        fun mapY(yf: Double) = (baseline + yf * yScale).toFloat()
+
+        val line = Path()
+        line.moveTo(xOf(0), mapY(yf(0)))
+        for (i in 1 until length) {
+            line.cubicTo(
+                xOf(i - 1) + step / 3f, mapY(yf(i - 1) - slopes[i - 1] / 3f),
+                xOf(i) - step / 3f, mapY(yf(i) + slopes[i] / 3f),
+                xOf(i), mapY(yf(i)),
+            )
+        }
+        val area = Path().apply {
+            addPath(line)
+            lineTo(size.width, size.height)
+            lineTo(xOf(0), size.height)
             close()
         }
-        drawPath(
-            fillPath,
-            Brush.verticalGradient(
-                listOf(downColor.copy(alpha = 0.35f), Color.Transparent),
-            ),
-        )
-        drawPath(downPath, downColor, style = Stroke(width = 4f, cap = StrokeCap.Round))
-        drawPath(buildPath { it.second }, upColor, style = Stroke(width = 3f, cap = StrokeCap.Round))
+        clipRect(0f, 0f, size.width, size.height) {
+            drawPath(
+                area,
+                Brush.verticalGradient(
+                    listOf(lineColor.copy(alpha = 0.38f), lineColor.copy(alpha = 0.10f)),
+                ),
+            )
+            drawPath(
+                line,
+                color = lineColor,
+                style = Stroke(
+                    width = strokeWidthPx,
+                    cap = StrokeCap.Round,
+                    join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                ),
+            )
+        }
     }
 }
 
-/** دونات نسبت مصرف دانلود/آپلود */
+/** دونات مصرف — پورت دقیق donut_chart.dart: gap بین سگمنت‌ها و کپ گرد */
 @Composable
 private fun UsageDonut(down: Long, up: Long, modifier: Modifier = Modifier) {
+    val upColor = MaterialTheme.colorScheme.secondary
     val downColor = MaterialTheme.colorScheme.primary
-    val upColor = MaterialTheme.colorScheme.tertiary
-    val track = MaterialTheme.colorScheme.surfaceVariant
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
     Canvas(modifier) {
-        val total = (down + up).coerceAtLeast(1L).toFloat()
-        val stroke = 14f
-        val inset = stroke
-        val arcSize = androidx.compose.ui.geometry.Size(size.width - inset * 2, size.height - inset * 2)
-        drawArc(
-            color = track,
-            startAngle = 0f,
-            sweepAngle = 360f,
-            useCenter = false,
-            topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-            size = arcSize,
-            style = Stroke(width = stroke),
+        val diameter = minOf(size.width, size.height)
+        val strokeWidthPx = (diameter * 0.12f).coerceIn(10.dp.toPx(), 16.dp.toPx())
+        val radius = (diameter - strokeWidthPx) / 2f
+        if (radius <= 0f) return@Canvas
+        val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+        val rect = androidx.compose.ui.geometry.Rect(
+            center - androidx.compose.ui.geometry.Offset(radius, radius),
+            androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f),
         )
-        val downSweep = (down.toFloat() / total) * 360f
-        if (downSweep > 0f) {
-            drawArc(
-                color = downColor,
-                startAngle = -90f,
-                sweepAngle = downSweep,
-                useCenter = false,
-                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(width = stroke, cap = StrokeCap.Round),
+
+        val total = (down + up).coerceAtLeast(1L)
+        val fractions = listOf(up.toFloat() / total, down.toFloat() / total)
+        val trackAlpha = 1f - fractions.fold(0f) { s, f -> s + f }
+        if (trackAlpha * 255f >= 1f) {
+            drawCircle(
+                trackColor.copy(alpha = trackAlpha),
+                radius = radius,
+                center = center,
+                style = Stroke(strokeWidthPx),
             )
         }
-        if (downSweep < 360f && up > 0) {
-            drawArc(
-                color = upColor,
-                startAngle = -90f + downSweep,
-                sweepAngle = 360f - downSweep,
-                useCenter = false,
-                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(width = stroke, cap = StrokeCap.Round),
-            )
+
+        val gapRatio = 0.3f
+        val fullDotFraction = 0.01f
+        val minSweep = 1e-3f
+        val colors = listOf(upColor, downColor)
+        val weights = fractions.map { minOf(1f, it / fullDotFraction) }
+        val slot = strokeWidthPx * (1f + gapRatio) / radius
+        val reserved = weights.fold(0f) { s, w -> s + w * slot }
+        val available = (2.0 * Math.PI - reserved).toFloat().coerceAtLeast(0f)
+
+        var start = (-Math.PI / 2).toFloat()
+        for (i in fractions.indices) {
+            val weight = weights[i]
+            val sweep = available * fractions[i]
+            start += weight * slot / 2f
+            if (weight > 0f) {
+                if (sweep > minSweep) {
+                    drawArc(
+                        colors[i],
+                        start,
+                        sweep,
+                        false,
+                        topLeft = rect.topLeft,
+                        size = rect.size,
+                        style = Stroke(strokeWidthPx * weight, cap = StrokeCap.Round),
+                    )
+                } else {
+                    drawCircle(
+                        colors[i],
+                        radius = strokeWidthPx * weight / 2f,
+                        center = center + androidx.compose.ui.geometry.Offset(
+                            kotlin.math.cos(start) * radius,
+                            kotlin.math.sin(start) * radius,
+                        ),
+                    )
+                }
+            }
+            start += sweep + weight * slot / 2f
         }
     }
 }
