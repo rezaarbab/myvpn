@@ -41,6 +41,10 @@ object VpnManager {
     private val _traffic = MutableStateFlow(TrafficStats())
     val traffic: StateFlow<TrafficStats> = _traffic.asStateFlow()
 
+    // تاریخچه‌ی سرعت برای نمودار زنده (حداکثر ۶۰ نمونه = ۶۰ ثانیه)
+    private val _speedHistory = MutableStateFlow<List<Pair<Long, Long>>>(emptyList())
+    val speedHistory: StateFlow<List<Pair<Long, Long>>> = _speedHistory.asStateFlow()
+
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
@@ -51,7 +55,16 @@ object VpnManager {
         _status.value = value
         if (value == Status.STOPPED) {
             _traffic.value = TrafficStats()
+            _speedHistory.value = emptyList()
         }
+    }
+
+    fun onTraffic(stats: TrafficStats) {
+        _traffic.value = stats
+        val history = _speedHistory.value.toMutableList()
+        history.add(stats.downlink to stats.uplink)
+        if (history.size > 60) history.removeAt(0)
+        _speedHistory.value = history
     }
 
     fun setError(message: String?) {
