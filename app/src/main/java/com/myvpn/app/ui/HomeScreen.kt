@@ -473,7 +473,7 @@ fun ServersScreen(onAdd: () -> Unit) {
         scope.launch {
             coroutineScope {
                 profiles.map { p ->
-                    async { pingResults[p.id] = ServerPinger.ping(p.server, p.serverPort) }
+                    async { pingResults[p.id] = ServerPinger.ping(p) }
                 }.awaitAll()
             }
             pinging = false

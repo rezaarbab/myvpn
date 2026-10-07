@@ -6,12 +6,24 @@ import android.app.NotificationManager
 import android.os.Build
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.SetupOptions
+import java.io.File
 
 class MyVpnApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        val stderrFile = File(filesDir, "go-stderr.log")
+
+        // اگر اجرای قبلی کرش گو داشته، متنش را در تب گزارش نشان بده
+        if (stderrFile.exists() && stderrFile.length() > 0) {
+            val previous = runCatching { stderrFile.readText() }.getOrDefault("")
+            if (previous.isNotBlank()) {
+                VpnManager.appendLog("——— خطای اجرای قبلی ———")
+                previous.lines().take(40).forEach { VpnManager.appendLog(it) }
+            }
+        }
 
         // حتماً حافظه داخلی: سوکت یونیکس command server روی emulated/external
         // ساخته نمی‌شود (bind: invalid argument)
@@ -25,6 +37,9 @@ class MyVpnApplication : Application() {
                 },
             )
         }
+
+        // stderr گو (متن panic/fatal error) را به فایل منتقل کن
+        runCatching { Libbox.redirectStderr(stderrFile.absolutePath) }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
