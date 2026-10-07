@@ -61,12 +61,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val themeMode by AppSettings.themeMode.collectAsState()
+            val seed by AppSettings.seed.collectAsState()
+            val pureBlack by AppSettings.pureBlack.collectAsState()
             val darkTheme = when (themeMode) {
                 "light" -> false
                 "dark" -> true
                 else -> isSystemInDarkTheme()
             }
-            MyVpnTheme(darkTheme = darkTheme) {
+            MyVpnTheme(darkTheme = darkTheme, seed = seed, pureBlack = pureBlack) {
                 AppNavHost(onConnect = { requestConnect() })
             }
         }
