@@ -72,7 +72,7 @@ fun LogsScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
             ) {
-                itemsIndexed(logs.asReversed()) { _, line ->
+                itemsIndexed(logs.reversed()) { _, line ->
                     SelectionContainer {
                         Text(
                             line,

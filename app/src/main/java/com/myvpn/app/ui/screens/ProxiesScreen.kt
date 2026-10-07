@@ -109,7 +109,7 @@ fun ProxiesScreen(modifier: Modifier = Modifier) {
         }
 
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 150.dp),
+            columns = GridCells.Fixed(2),
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)

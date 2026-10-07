@@ -130,6 +130,15 @@ jobs:
           fi
           exit "$status"
 
+      - name: Upload R8 mapping (رمزگشایی stack trace های release)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-txt
+          path: app/build/outputs/mapping/release/mapping.txt
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

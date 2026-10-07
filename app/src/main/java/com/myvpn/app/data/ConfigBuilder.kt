@@ -52,7 +52,7 @@ object ConfigBuilder {
                     add(JsonPrimitive("172.19.0.1/30"))
                     add(JsonPrimitive("fdfe:dcba:9876::1/126"))
                 }
-                put("mtu", 9000)
+                put("mtu", 1500)
                 put("auto_route", true)
                 put("strict_route", true)
                 put("stack", "system")
@@ -206,7 +206,7 @@ object ConfigBuilder {
                             add(JsonPrimitive("172.19.0.1/30"))
                             add(JsonPrimitive("fdfe:dcba:9876::1/126"))
                         }
-                        put("mtu", 9000)
+                        put("mtu", 1500)
                         put("auto_route", true)
                         put("strict_route", true)
                         put("stack", "system")
