@@ -35,11 +35,11 @@ object ConfigBuilder {
                     put("detour", "proxy")
                 })
                 add(buildJsonObject {
-                    put("type", "udp")
+                    // «local» در sing-box ۱.۱۲ خودش با dialer وصل می‌شود (معادل
+                    // directِ خالی)؛ برای همین نامِ خودِ سرور پروکسی از این‌جا حل
+                    // می‌شود و دور باطل «برای رسیدن به سرور اول DNS لازم است» پیش نمی‌آید
+                    put("type", "local")
                     put("tag", "dns-direct")
-                    put("server", "8.8.8.8")
-                    // بدون detour: رفتار پیش‌فرض یعنی dial مستقیم؛
-                    // اعتبارسنجِ sing-box «detour به direct خالی» را رد می‌کند
                 })
             }
             put("final", "dns-remote")
@@ -68,6 +68,18 @@ object ConfigBuilder {
         putJsonObject("route") {
             put("final", "proxy")
             put("default_domain_resolver", "dns-direct")
+            put("auto_detect_interface", true)
+            // بدون این قانون، کوئری DNS مثل یک جریان UDP معمولی از پراکسی بیرون
+            // می‌رود (در لاگ: outbound/vless → 172.19.0.2:53) و هرچه دامنه است
+            // در سرور مقابل گم می‌شود
+            putJsonArray("rules") {
+                add(buildJsonObject {
+                    put("action", "hijack-dns")
+                    putJsonArray("protocol") {
+                        add(JsonPrimitive("dns"))
+                    }
+                })
+            }
         }
         // libbox v1.12 در SetService به clash_server نیاز دارد
         putJsonObject("experimental") {
