@@ -218,12 +218,16 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
                     builder.excludeRoute(IpPrefix(InetAddress.getByName(prefix.address()), prefix.prefix()))
                 }
             } else {
+                // Android < 13: بدون route پیش‌فرض، ترافیک وارد تانل نمی‌شود
+                // (اتصال برقرار می‌ماند ولی صفر داده رد و بدل می‌شود)
                 val inet4RouteRange = options.inet4RouteRange
                 if (inet4RouteRange.hasNext()) {
                     while (inet4RouteRange.hasNext()) {
                         val prefix = inet4RouteRange.next()!!
                         builder.addRoute(prefix.address(), prefix.prefix())
                     }
+                } else {
+                    builder.addRoute("0.0.0.0", 0)
                 }
                 val inet6RouteRange = options.inet6RouteRange
                 if (inet6RouteRange.hasNext()) {
@@ -231,6 +235,8 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
                         val prefix = inet6RouteRange.next()!!
                         builder.addRoute(prefix.address(), prefix.prefix())
                     }
+                } else if (options.inet6Address.hasNext()) {
+                    builder.addRoute("::", 0)
                 }
             }
 
