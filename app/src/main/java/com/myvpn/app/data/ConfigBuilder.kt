@@ -35,13 +35,12 @@ object ConfigBuilder {
                     put("detour", "proxy")
                 })
                 add(buildJsonObject {
-                    // bootstarp: نام خودِ سرور پروکسی از این‌جا حل می‌شود. بدون
-                    // detour، این کوئری هم مثل بقیه به فینالِ route (یعنی پروکسی)
-                    // می‌رود و دور باطل می‌شود؛ «direct» صریح آن را از تونل بیرون می‌برد
-                    put("type", "udp")
+                    // «local» با dialer خودش (بیرون از route) وصل می‌شود؛ نامِ خودِ
+                    // سرور پروکسی از همین‌جا حل می‌شود. detour:direct رد می‌شود چون
+                    // outboundِ direct ما خالی است، و با strict_route=true هم سوکتش
+                    // توسط VPN بلاک می‌شد (i/o timeout در لاگ قبلی)
+                    put("type", "local")
                     put("tag", "dns-direct")
-                    put("server", "8.8.8.8")
-                    put("detour", "direct")
                 })
             }
             put("final", "dns-remote")
@@ -56,7 +55,10 @@ object ConfigBuilder {
                 }
                 put("mtu", 1500)
                 put("auto_route", true)
-                put("strict_route", true)
+                // strict_route سوکت‌های محافظت‌نشده را می‌بندد و resolver محلی را
+                // هم می‌کُند؛ بدون آن DNS بوت‌استرپ کار می‌کند و auto_route همچنان
+                // کل ترافیک را داخل تونل می‌آورد
+                put("strict_route", false)
                 put("stack", "system")
             })
         }
@@ -222,7 +224,7 @@ object ConfigBuilder {
                         }
                         put("mtu", 1500)
                         put("auto_route", true)
-                        put("strict_route", true)
+                        put("strict_route", false)
                         put("stack", "system")
                     })
                 }
