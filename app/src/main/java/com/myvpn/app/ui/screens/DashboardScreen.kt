@@ -37,6 +37,7 @@ import com.myvpn.app.ui.components.AppCard
 import com.myvpn.app.ui.components.DonutChart
 import com.myvpn.app.ui.components.InfoHeader
 import com.myvpn.app.ui.components.NetworkSpeedCard
+import com.myvpn.app.ui.components.StatusChip
 import com.myvpn.app.ui.components.WidgetGrid
 import com.myvpn.app.ui.components.WidgetSpec
 import com.myvpn.app.ui.formatBytes
@@ -195,13 +196,21 @@ private fun ActiveProfileCard(
     onClick: () -> Unit,
 ) {
     AppCard(modifier = modifier, selected = active, onClick = onClick) {
-        InfoHeader("پروفایل فعال", Icons.Filled.List)
+        // کارت یک‌خطی گرید فقط ۸۰dp ارتفاع دارد: نوع به انتهای سرِ کارت می‌رود تا متن دوم جا نشود
+        InfoHeader(
+            title = "پروفایل فعال",
+            icon = Icons.Filled.List,
+            action = {
+                StatusChip(
+                    text = detail.substringBefore(" • "),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            },
+        )
         Spacer(Modifier.height(6.dp))
-        Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
-            detail,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            name,
+            style = MaterialTheme.typography.titleSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
