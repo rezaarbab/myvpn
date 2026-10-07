@@ -35,11 +35,13 @@ object ConfigBuilder {
                     put("detour", "proxy")
                 })
                 add(buildJsonObject {
-                    // «local» در sing-box ۱.۱۲ خودش با dialer وصل می‌شود (معادل
-                    // directِ خالی)؛ برای همین نامِ خودِ سرور پروکسی از این‌جا حل
-                    // می‌شود و دور باطل «برای رسیدن به سرور اول DNS لازم است» پیش نمی‌آید
-                    put("type", "local")
+                    // bootstarp: نام خودِ سرور پروکسی از این‌جا حل می‌شود. بدون
+                    // detour، این کوئری هم مثل بقیه به فینالِ route (یعنی پروکسی)
+                    // می‌رود و دور باطل می‌شود؛ «direct» صریح آن را از تونل بیرون می‌برد
+                    put("type", "udp")
                     put("tag", "dns-direct")
+                    put("server", "8.8.8.8")
+                    put("detour", "direct")
                 })
             }
             put("final", "dns-remote")
@@ -69,14 +71,14 @@ object ConfigBuilder {
             put("final", "proxy")
             put("default_domain_resolver", "dns-direct")
             put("auto_detect_interface", true)
-            // بدون این قانون، کوئری DNS مثل یک جریان UDP معمولی از پراکسی بیرون
-            // می‌رود (در لاگ: outbound/vless → 172.19.0.2:53) و هرچه دامنه است
-            // در سرور مقابل گم می‌شود
+            // تطبیق بر پایه‌ی «protocol» نیازمند فعال‌بودن sniff است و بی‌آن هرگز
+            // آتش نمی‌گیرد (لاگ هسته نشان می‌داد کوئری‌ها همچنان پراکسی می‌شدند)؛
+            // پورت ۵۳ قطعی و مستقل از sniff است
             putJsonArray("rules") {
                 add(buildJsonObject {
                     put("action", "hijack-dns")
-                    putJsonArray("protocol") {
-                        add(JsonPrimitive("dns"))
+                    putJsonArray("port") {
+                        add(JsonPrimitive(53))
                     }
                 })
             }
