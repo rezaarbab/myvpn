@@ -96,14 +96,6 @@ object VpnManager {
         }
     }
 
-    fun setStatus(value: Status) {
-        _status.value = value
-        if (value == Status.STOPPED) {
-            _traffic.value = TrafficStats()
-            _speedHistory.value = emptyList()
-        }
-    }
-
     fun onTraffic(stats: TrafficStats) {
         _traffic.value = stats
         val history = _speedHistory.value.toMutableList()
