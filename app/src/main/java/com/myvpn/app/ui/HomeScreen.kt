@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,10 +36,13 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -49,6 +53,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -58,8 +63,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,7 +86,13 @@ import androidx.navigation.compose.rememberNavController
 import com.myvpn.app.VpnManager
 import com.myvpn.app.bg.TunnelService
 import com.myvpn.app.data.ProfileStore
+import com.myvpn.app.data.ServerPinger
 import com.myvpn.app.data.ServerProfile
+import com.myvpn.app.data.TrafficStore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 private const val ROUTE_HOME = "home"
 private const val ROUTE_SERVERS = "servers"
@@ -157,6 +170,8 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     val error by VpnManager.lastError.collectAsStateWithLifecycle()
     val profiles by ProfileStore.profiles.collectAsStateWithLifecycle()
     val selectedId by ProfileStore.selectedId.collectAsStateWithLifecycle()
+    val totalDown by TrafficStore.totalDown.collectAsStateWithLifecycle()
+    val totalUp by TrafficStore.totalUp.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) { VpnManager.observe() }
@@ -270,19 +285,38 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
 
         Spacer(Modifier.weight(0.8f))
 
-        // کاشی‌های آمار
+        // کاشی‌های آمار نشست
         AnimatedVisibility(
             visible = connected,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically(),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StatTile("↓", formatBytes(traffic.downlink) + "/s", Modifier.weight(1f))
-                StatTile("↑", formatBytes(traffic.uplink) + "/s", Modifier.weight(1f))
-                StatTile("Σ", formatBytes(traffic.downlinkTotal + traffic.uplinkTotal), Modifier.weight(1f))
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    StatTile("↓", formatBytes(traffic.downlink) + "/s", Modifier.weight(1f))
+                    StatTile("↑", formatBytes(traffic.uplink) + "/s", Modifier.weight(1f))
+                    StatTile("Σ", formatBytes(traffic.downlinkTotal + traffic.uplinkTotal), Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(6.dp))
+                // مصرف تجمعی کل + ریست
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "مصرف کل: ${formatBytes(totalDown + totalUp)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        onClick = { TrafficStore.reset() },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                    ) { Text("ریست") }
+                }
             }
         }
 
@@ -391,6 +425,12 @@ private fun StatTile(icon: String, value: String, modifier: Modifier = Modifier)
     }
 }
 
+private enum class SortMode(val label: String) {
+    DEFAULT("پیش‌فرض"),
+    NAME("نام"),
+    PING("پینگ"),
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServersScreen(onAdd: () -> Unit) {
@@ -398,37 +438,106 @@ fun ServersScreen(onAdd: () -> Unit) {
     val selectedId by ProfileStore.selectedId.collectAsStateWithLifecycle()
     var deleteTarget by remember { mutableStateOf<ServerProfile?>(null) }
 
+    var query by remember { mutableStateOf("") }
+    var sortMode by remember { mutableStateOf(SortMode.DEFAULT) }
+    var sortMenuOpen by remember { mutableStateOf(false) }
+    val pingResults = remember { mutableStateMapOf<String, Long?>() }
+    var pinging by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val filtered = profiles
+        .filter {
+            query.isBlank() ||
+                it.name.contains(query, ignoreCase = true) ||
+                it.server.contains(query, ignoreCase = true)
+        }
+        .let { list ->
+            when (sortMode) {
+                SortMode.NAME -> list.sortedBy { it.name.lowercase() }
+                SortMode.PING -> list.sortedBy { pingResults[it.id] ?: Long.MAX_VALUE }
+                SortMode.DEFAULT -> list
+            }
+        }
+
     Scaffold(
         topBar = { TopAppBar(title = { Text("سرورها") }) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAdd) { Icon(Icons.Filled.Add, contentDescription = "افزودن") }
         },
     ) { padding ->
-        if (profiles.isEmpty()) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp),
+        LazyColumn(Modifier.padding(padding)) {
+            item {
+                Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("جستجو") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text("هنوز سروری اضافه نشده است", textAlign = TextAlign.Center)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box {
+                            TextButton(onClick = { sortMenuOpen = true }) {
+                                Text("مرتب‌سازی: ${sortMode.label}")
+                            }
+                            DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
+                                SortMode.entries.forEach { mode ->
+                                    DropdownMenuItem(
+                                        text = { Text(mode.label) },
+                                        onClick = {
+                                            sortMode = mode
+                                            sortMenuOpen = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        TextButton(
+                            enabled = !pinging && filtered.isNotEmpty(),
+                            onClick = {
+                                pinging = true
+                                scope.launch {
+                                    coroutineScope {
+                                        filtered.map { p ->
+                                            async {
+                                                pingResults[p.id] =
+                                                    ServerPinger.ping(p.server, p.serverPort)
+                                            }
+                                        }.awaitAll()
+                                    }
+                                    pinging = false
+                                }
+                            },
+                        ) { Text(if (pinging) "در حال پینگ…" else "پینگ همه") }
+                    }
                 }
             }
-        } else {
-            LazyColumn(Modifier.padding(padding)) {
-                items(profiles.size) { index ->
-                    val profile = profiles[index]
+            if (filtered.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            if (profiles.isEmpty()) "هنوز سروری اضافه نشده است" else "نتیجه‌ای یافت نشد",
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            } else {
+                items(filtered.size) { index ->
+                    val profile = filtered[index]
+                    val ping = pingResults[profile.id]
+                    val pingText = when {
+                        !pinging && ping != null -> " • ${ping}ms"
+                        !pinging && ping == null -> ""
+                        else -> " • …"
+                    }
                     ListItem(
                         headlineContent = { Text(profile.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        supportingContent = { Text("${profile.type.uppercase()} • ${profile.displayAddress}") },
+                        supportingContent = { Text("${profile.type.uppercase()} • ${profile.displayAddress}$pingText") },
                         leadingContent = {
                             RadioButton(
                                 selected = profile.id == selectedId,

@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.myvpn.app.bg.TunnelService
 import com.myvpn.app.data.ProfileStore
+import com.myvpn.app.data.TrafficStore
 import com.myvpn.app.ui.AppNavHost
 import com.myvpn.app.ui.theme.MyVpnTheme
 
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ProfileStore.init(this)
+        TrafficStore.init(this)
         setContent {
             MyVpnTheme {
                 AppNavHost(onConnect = { requestConnect() })

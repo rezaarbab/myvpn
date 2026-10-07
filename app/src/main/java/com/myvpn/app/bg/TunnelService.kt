@@ -23,6 +23,7 @@ import com.myvpn.app.R
 import com.myvpn.app.VpnManager
 import com.myvpn.app.data.ConfigBuilder
 import com.myvpn.app.data.ProfileStore
+import com.myvpn.app.data.TrafficStore
 import io.nekohasekai.libbox.BoxService
 import io.nekohasekai.libbox.CommandServer
 import io.nekohasekai.libbox.CommandServerHandler
@@ -118,6 +119,11 @@ class TunnelService : VpnService(), PlatformInterfaceImpl, CommandServerHandler 
             runCatching { it.close() }
         }
         fileDescriptor = null
+        // ثبت مصرف این نشست در مجموع کل
+        val sessionTraffic = VpnManager.traffic.value
+        if (sessionTraffic.downlinkTotal > 0 || sessionTraffic.uplinkTotal > 0) {
+            TrafficStore.addSession(sessionTraffic.downlinkTotal, sessionTraffic.uplinkTotal)
+        }
         boxService?.let { service ->
             runCatching { service.close() }
         }
