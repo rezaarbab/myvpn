@@ -205,6 +205,13 @@ private fun ChoiceDialog(
     )
 }
 
-/** رنگ seed برای نشان پیش‌نمایش (کلیدهای SeedThemes به شکل 0xFFRRGGBB هستند). */
+/**
+ * رنگ seed برای نشان پیش‌نمایش.
+ *
+ * `Color(ULong)` سازنده‌ی *بسته‌شده‌ی داخلی* است (ARGB در ۳۲ بیت بالایی، پایین‌ها
+ * شناسه‌ی فضای رنگ)؛ دادن مقدار ARGB خام به آن یک فضای رنگ نامعتبر می‌سازد و
+ * هنگام رسم با ArrayIndexOutOfBoundsException در ColorSpaces می‌ترکد.
+ * سازنده‌ی `Color(Long)` همان عدد را به‌درستی از ARGB می‌سازد.
+ */
 private fun seedToColor(seed: String): Color =
-    runCatching { Color(seed.removePrefix("0x").removePrefix("0X").toULong(16)) }.getOrDefault(Color.Gray)
+    runCatching { Color(seed.removePrefix("0x").removePrefix("0X").toLong(16)) }.getOrDefault(Color.Gray)
