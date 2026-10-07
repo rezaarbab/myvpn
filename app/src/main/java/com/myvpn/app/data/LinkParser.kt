@@ -153,10 +153,12 @@ object LinkParser {
         val decoded = runCatching { decodeBase64(main) }.getOrDefault(main)
         val name = java.net.URLDecoder.decode(fragment.ifBlank { "ss" }, "UTF-8")
 
-        // حالت SIP002: base64(method:password)@host:port
+        // حالت SIP002: ss://base64(method:password)@host:port
         val atIndex = decoded.lastIndexOf('@')
         if (atIndex > 0) {
-            val userInfo = decoded.substring(0, atIndex)
+            val userInfoRaw = decoded.substring(0, atIndex)
+            // بخش base64 خودش «method:password» است — اگر انکود بود جداگانه دیکود می‌شود
+            val userInfo = runCatching { decodeBase64(userInfoRaw) }.getOrElse { userInfoRaw }
             val hostPart = decoded.substring(atIndex + 1).substringBefore('/')
             val method = userInfo.substringBefore(':')
             val password = userInfo.substringAfter(':', missingDelimiterValue = "")

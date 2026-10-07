@@ -1,23 +1,9 @@
 package com.myvpn.app.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,23 +17,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,6 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -72,8 +55,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -176,6 +157,8 @@ private fun navigateTab(navController: NavHostController, route: String) {
     }
 }
 
+// ---------- داشبورد (سبک Exclave) ----------
+
 @Composable
 fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     val status by VpnManager.status.collectAsStateWithLifecycle()
@@ -196,152 +179,75 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     val statusColorRaw = when (status) {
         VpnManager.Status.STOPPED -> MaterialTheme.colorScheme.error
         VpnManager.Status.STARTING -> MaterialTheme.colorScheme.tertiary
-        VpnManager.Status.STARTED -> Color(0xFF2E7D32)
+        VpnManager.Status.STARTED -> Color(0xFF2E9E6B)
         VpnManager.Status.STOPPING -> MaterialTheme.colorScheme.tertiary
     }
-    val statusColor by animateColorAsState(statusColorRaw, label = "statusColor")
+    val statusColor by androidx.compose.animation.animateColorAsState(statusColorRaw, label = "statusColor")
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // نشان وضعیت
-        Surface(
-            shape = CircleShape,
-            color = statusColor.copy(alpha = 0.14f),
-            contentColor = statusColor,
+        // ---- کارت وضعیت با سوییچ بزرگ (سبک Exclave) ----
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(statusColor, CircleShape),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(statusLabel(), style = MaterialTheme.typography.labelLarge)
-            }
-        }
-
-        Spacer(Modifier.weight(0.8f))
-
-        // دکمه‌ی اتصال با هاله و پالس
-        val pulse = rememberInfiniteTransition(label = "pulse")
-        val pulseT by pulse.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing)),
-            label = "pulseT",
-        )
-
-        Box(contentAlignment = Alignment.Center) {
-            Box(
-                modifier = Modifier
-                    .size(190.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(statusColor.copy(alpha = 0.18f), Color.Transparent),
-                        ),
-                        CircleShape,
-                    ),
-            )
-            if (connected) {
-                Canvas(Modifier.size(190.dp)) {
-                    val base = size.minDimension / 2
-                    repeat(2) { i ->
-                        val t = (pulseT + i * 0.5f) % 1f
-                        drawCircle(
-                            color = statusColor.copy(alpha = (1f - t) * 0.30f),
-                            radius = base * (0.55f + 0.45f * t),
-                        )
-                    }
-                }
-            }
-            if (busy) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(150.dp),
-                    strokeWidth = 3.dp,
-                    color = statusColor,
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(136.dp)
-                    .shadow(16.dp, CircleShape)
-                    .background(
-                        if (connected) com.myvpn.app.ui.theme.DisconnectGradient else com.myvpn.app.ui.theme.ConnectGradient,
-                        CircleShape,
-                    )
-                    .clickable {
-                        if (!busy) {
-                            if (status == VpnManager.Status.STOPPED) onConnect() else TunnelService.stop(context)
-                        }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (connected) Icons.Filled.Close else Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(60.dp),
-                )
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-        Text(
-            if (connected) "ضربه بزنید تا قطع شود" else "ضربه بزنید تا وصل شود",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Spacer(Modifier.weight(0.8f))
-
-        // کاشی‌های آمار نشست
-        AnimatedVisibility(
-            visible = connected,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Column {
+            Column(Modifier.padding(18.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    StatTile("↓", "دانلود", formatBytes(traffic.downlink) + "/s", Modifier.weight(1f))
-                    StatTile("↑", "آپلود", formatBytes(traffic.uplink) + "/s", Modifier.weight(1f))
-                    StatTile("Σ", "کل نشست", formatBytes(traffic.downlinkTotal + traffic.uplinkTotal), Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(6.dp))
-                // مصرف تجمعی کل + ریست
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        "مصرف کل: ${formatBytes(totalDown + totalUp)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            statusLabel(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = statusColor,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            selected?.name ?: "سروری انتخاب نشده",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (busy) {
+                        CircularProgressIndicator(Modifier.size(40.dp), strokeWidth = 3.dp, color = statusColor)
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    Switch(
+                        checked = connected,
+                        onCheckedChange = {
+                            if (!busy) {
+                                if (status == VpnManager.Status.STOPPED) onConnect() else TunnelService.stop(context)
+                            }
+                        },
+                        enabled = !busy,
                     )
-                    TextButton(
-                        onClick = { TrafficStore.reset() },
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                    ) { Text("ریست") }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // ترافیک زنده با آیکون
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    TrafficBadge("↓", formatBytes(traffic.downlink) + "/s", Modifier.weight(1f))
+                    TrafficBadge("↑", formatBytes(traffic.uplink) + "/s", Modifier.weight(1f))
+                    TrafficBadge("Σ", formatBytes(traffic.downlinkTotal + traffic.uplinkTotal), Modifier.weight(1f))
                 }
             }
         }
 
-        AnimatedVisibility(
-            visible = error != null,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            ElevatedCard(Modifier.fillMaxWidth().padding(top = 10.dp)) {
+        // ---- خطا ----
+        if (error != null) {
+            ElevatedCard(Modifier.fillMaxWidth()) {
                 Text(
                     error ?: "",
                     color = MaterialTheme.colorScheme.error,
@@ -351,14 +257,28 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
             }
         }
 
-        Spacer(Modifier.height(10.dp))
+        // ---- مصرف ----
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+            Row(
+                Modifier.padding(horizontal = 14.dp, vertical = 10.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("مصرف کل", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "${formatBytes(totalDown + totalUp)}  (↓${formatBytes(totalDown)} ↑${formatBytes(totalUp)})",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                TextButton(onClick = { TrafficStore.reset() }) { Text("ریست") }
+            }
+        }
 
-        // کارت سرور فعال
+        // ---- سرور فعال ----
         Card(
             onClick = onOpenServers,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Row(
                 modifier = Modifier.padding(14.dp),
@@ -366,14 +286,14 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(42.dp)
                         .background(com.myvpn.app.ui.theme.BrandGradient, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         selected?.name?.trim()?.firstOrNull()?.uppercase() ?: "+",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
                     )
                 }
                 Spacer(Modifier.width(12.dp))
@@ -409,6 +329,24 @@ fun HomeScreen(onConnect: () -> Unit, onOpenServers: () -> Unit) {
     }
 }
 
+@Composable
+private fun TrafficBadge(icon: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(icon, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(8.dp))
+            Text(value, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
 private fun statusLabel(): String = when (VpnManager.status.value) {
     VpnManager.Status.STOPPED -> "قطع"
     VpnManager.Status.STARTING -> "در حال اتصال…"
@@ -428,36 +366,16 @@ private fun formatBytes(value: Long): String {
     return String.format(java.util.Locale.US, "%.1f %s", size, units[unit])
 }
 
-@Composable
-private fun StatTile(icon: String, label: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier = modifier, shape = RoundedCornerShape(14.dp)) {
-        Column(
-            modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(icon, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-        }
-    }
-}
-
 /** رنگ پینگ: خوب سبز، متوسط زرد، ضعیف قرمز */
 @Composable
 private fun pingColor(ms: Long?): Color = when {
     ms == null -> MaterialTheme.colorScheme.error
-    ms < 120 -> Color(0xFF2E7D32)
+    ms < 120 -> Color(0xFF2E9E6B)
     ms < 300 -> Color(0xFFF9A825)
     else -> MaterialTheme.colorScheme.error
 }
+
+// ---------- سرورها ----------
 
 private enum class SortMode(val label: String) {
     DEFAULT("پیش‌فرض"),
@@ -496,7 +414,6 @@ fun ServersScreen(onAdd: () -> Unit) {
         }
     }
 
-    // پینگ خودکار هنگام ورود به تب سرورها
     LaunchedEffect(Unit) { pingAll() }
 
     val filtered = profiles
@@ -554,7 +471,7 @@ fun ServersScreen(onAdd: () -> Unit) {
                         TextButton(
                             enabled = !pinging && filtered.isNotEmpty(),
                             onClick = { pingAll() },
-                        ) { Text(if (pinging) "در حال پینگ…" else "پینگ همه") }
+                        ) { Text(if (pinging) "در حال گرفتن پینگ…" else "پینگ همه") }
                     }
                 }
             }
